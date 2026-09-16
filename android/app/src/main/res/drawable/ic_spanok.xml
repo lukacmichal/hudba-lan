@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tri ubudajuce ciary = tlacidlo "Spanok", teda "dohraju uz len posledne tri
+     skladby". Zamerne to NIE je dalsi mesiac: mesiac patri uspatiu pocitaca
+     (ic_sleep) a pri 20dp sa dva mesiace od seba nedaju rozoznat — z rovnakeho
+     dovodu dostal "Spanok 2" srdce. Ubudajuca dlzka ciar nesie vyznam sama:
+     playlist sa krati ku koncu.
+     Velkost aj farba su ako pri ostatnych ikonach widgetu (24dp). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="@color/metal_accent_light">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M4.8,4.7 L19.2,4.7 A1.3,1.3 0 0 1 19.2,7.3 L4.8,7.3 A1.3,1.3 0 0 1 4.8,4.7 Z
+                          M4.8,10.7 L13.2,10.7 A1.3,1.3 0 0 1 13.2,13.3 L4.8,13.3 A1.3,1.3 0 0 1 4.8,10.7 Z
+                          M4.8,16.7 L7.7,16.7 A1.3,1.3 0 0 1 7.7,19.3 L4.8,19.3 A1.3,1.3 0 0 1 4.8,16.7 Z" />
+</vector>

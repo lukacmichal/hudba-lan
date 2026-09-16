@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Must stay in sync with UpdateChecker's download target (cacheDir/updates).
+  If these drift apart, FileProvider throws "Failed to find configured root".
+-->
+<paths>
+    <cache-path name="updates" path="updates/" />
+</paths>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Vychodzie su 4 bunky na sirku a 2 na vysku: sest tlacidiel v rade potrebuje
+  sirku a nad nimi je este nazov skladby s interpretom.
+
+  Da sa stiahnut na 2x1 — vtedy sa nazov aj tlacidla zmensia, ale ostanu
+  vsetky. Skryvat pri uzkom widgete niektore tlacidlo by znamenalo, ze sa
+  poloha ostatnych meni podla sirky a ruka by uz netrafila to iste miesto.
+
+  updatePeriodMillis je 0: widget sam na siet nechodi. Nazov skladby doňho
+  zapisuje appka pri kazdom pollnuti metadat.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="70dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="40dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:description="@string/w_popis"
+    android:initialLayout="@layout/widget_ovladac"
+    android:previewImage="@drawable/ic_stat_music"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

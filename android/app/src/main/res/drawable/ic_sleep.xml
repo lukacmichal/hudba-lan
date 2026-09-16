@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mesiac = uspat pocitac. Tvar aj velkost su rovnake ako pri ostatnych
+     ikonach widgetu (24dp, biela). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="@color/metal_accent_light">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12.3,3.1 a9,9 0 1 0 8.6,11.6 a7,7 0 0 1 -8.6,-11.6 z" />
+</vector>

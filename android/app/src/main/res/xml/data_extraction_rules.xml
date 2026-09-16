@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  App settings are neither backed up nor transferred to another device.
+
+  Reason: `lanmusic_secret` holds the NAS password. `allowBackup="false"` covers
+  cloud backup, but device transfer (Android 12+) is decided here and would
+  otherwise copy the prefs — password included — onto the new phone.
+
+  Nothing of value is lost: the NAS address and credentials are re-entered once
+  in Settings after installing.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>

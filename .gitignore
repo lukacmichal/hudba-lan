@@ -1,0 +1,29 @@
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/keystore.properties
+android/keystore/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# JVM crash dumps
+hs_err_pid*.log
+replay_pid*.log
+
+# Poverenia k NAS-u - do gitu ani do balika na NAS nikdy
+*.local
+.kotlin/
+*.log
+.vscode/
+build/

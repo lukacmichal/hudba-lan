@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget na ovladanie prehravaca na pocitaci. Dva riadky:
+
+    hore vlavo  nazov skladby a interpret
+    hore vpravo Spanok / uspat / Spanok 2 / vypnut  — vsetky styri cez potvrdenie
+    dole        prevracanie a prehravanie
+
+  "Spanok" (31. 8. 2026) pribudol ZLAVA, nie na koniec radu. Skupina je totiz
+  zarovnana doprava — nazov skladby berie zvysok sirky — takze tlacidlo pridane
+  zlava necha ostatne tri presne tam, kde boli. Pridane sprava by ich vsetky
+  posunulo a ruka by uz netrafila to iste miesto.
+
+  Rozdelenie do dvoch riadkov (31. 8. 2026) nahradilo jeden rad siestich
+  tlacidiel. Nevratne prikazy tak nesusedia s prevracanim skladieb uz polohou,
+  nie len medzerou, a na spodne styri tlacidla zostava cela sirka widgetu.
+
+  POZOR NA REMOTEVIEWS. Widget nie je obycajny layout — launcher vie nafuknut
+  len uzky zoznam tried. Prva verzia (27. 8. 2026) sa nedala pridat vobec
+  ("Miniaplikaciu sa nepodarilo pridat") kvoli dvom veciam:
+
+  1. `<View>` ako oddelovacia ciara. Holy `View` v tom zozname NIE JE; povolene
+     su okrem inych `ImageView`, `TextView`, `Button`, `ImageButton` a par
+     kontajnerov (`LinearLayout` medzi ne patri, aj vnoreny).
+  2. `?android:attr/selectableItemBackground` ako pozadie tlacidiel. Atribut
+     temy sa v procese launchera nema podla coho rozlozit. Pozadie je teraz
+     konkretny drawable.
+
+  Nazov je jednoriadkovy: widget sa da stiahnut na dve bunky a zalomeny text by
+  vytlacil tlacidla mimo. Horne tlacidla maju pevnu sirku, aby sa pri uzkom
+  widgete zmensoval nazov, nie ony.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_koren"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_ovladac_bg"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <!-- ── horny riadok: skladba vlavo, spanky vpravo ────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingEnd="6dp">
+
+            <TextView
+                android:id="@+id/w_titul"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/metal_text"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/w_interpret"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/metal_text_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/w_spanok"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center_vertical"
+            android:background="@drawable/widget_tlacidlo_bg"
+            android:contentDescription="@string/w_sleep_tail"
+            android:scaleType="fitCenter"
+            android:padding="6dp"
+            android:src="@drawable/ic_spanok" />
+
+        <ImageButton
+            android:id="@+id/w_sleep"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/widget_tlacidlo_bg"
+            android:contentDescription="@string/w_sleep"
+            android:scaleType="fitCenter"
+            android:padding="6dp"
+            android:src="@drawable/ic_sleep" />
+
+        <ImageButton
+            android:id="@+id/w_sleep2"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/widget_tlacidlo_bg"
+            android:contentDescription="@string/w_sleep2"
+            android:scaleType="fitCenter"
+            android:padding="6dp"
+            android:src="@drawable/ic_sleep2" />
+
+        <ImageButton
+            android:id="@+id/w_shutdown"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/widget_tlacidlo_bg"
+            android:contentDescription="@string/w_shutdown"
+            android:scaleType="fitCenter"
+            android:padding="6dp"
+            android:src="@drawable/ic_power" />
+    </LinearLayout>
+
+    <!-- ── dolny riadok: prehravanie ────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/w_prev"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tlacidlo_bg"
+            android:contentDescription="@string/w_prev"
+            android:scaleType="fitCenter"
+            android:padding="8dp"
+            android:src="@drawable/ic_prev" />
+
+        <ImageButton
+            android:id="@+id/w_playpause"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tlacidlo_bg"
+            android:contentDescription="@string/w_playpause"
+            android:scaleType="fitCenter"
+            android:padding="8dp"
+            android:src="@drawable/ic_play" />
+
+        <ImageButton
+            android:id="@+id/w_next"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tlacidlo_bg"
+            android:contentDescription="@string/w_next"
+            android:scaleType="fitCenter"
+            android:padding="8dp"
+            android:src="@drawable/ic_next" />
+
+        <ImageButton
+            android:id="@+id/w_stop"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tlacidlo_bg"
+            android:contentDescription="@string/w_stop"
+            android:scaleType="fitCenter"
+            android:padding="8dp"
+            android:src="@drawable/ic_stop" />
+    </LinearLayout>
+</LinearLayout>

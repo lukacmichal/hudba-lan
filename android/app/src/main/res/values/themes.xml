@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Tmavá téma podľa Windows appky (pozadie #1e1a16). -->
+    <style name="Theme.Sklanmusic" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/metal_bg</item>
+        <item name="android:statusBarColor">@color/metal_bg</item>
+        <item name="android:navigationBarColor">@color/metal_bg</item>
+    </style>
+</resources>

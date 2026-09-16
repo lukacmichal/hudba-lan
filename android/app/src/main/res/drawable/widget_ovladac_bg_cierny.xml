@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Čierna varianta pozadia widgetu. Tvar aj okraj sú rovnaké ako vo
+  `widget_ovladac_bg`, len výplň je čisto čierna.
+
+  Nie je to iný vzhľad, je to úspora batérie: widget býva na ploche stále a na
+  OLED displeji sa čierny pixel vôbec nerozsvieti, kým `metal_surface`
+  (#2B2520) svieti. Okraj `metal_border` ostáva — bez neho by widget na tmavej
+  tapete nemal hranicu.
+
+  Prepína to `OvladacWidgetProvider` podľa režimu zvoleného v Nastaveniach.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FF000000" />
+    <stroke
+        android:width="1dp"
+        android:color="@color/metal_border" />
+    <corners android:radius="18dp" />
+</shape>

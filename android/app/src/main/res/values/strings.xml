@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_name">LAN Music</string>
+
+    <!-- ── widget na ovládanie ──────────────────────────────────────────── -->
+    <string name="w_popis">Ovládanie prehrávača na počítači</string>
+    <string name="w_prev">Predchádzajúca</string>
+    <string name="w_playpause">Prehrať alebo pauza</string>
+    <string name="w_next">Nasledujúca</string>
+    <string name="w_stop">Zastaviť</string>
+    <string name="w_sleep_tail">Spánok — dohrajú posledné tri skladby</string>
+    <string name="w_sleep">Uspať počítač</string>
+    <string name="w_sleep2">Spánok 2 — pustiť skladby zo zoznamu</string>
+    <string name="w_shutdown">Vypnúť počítač</string>
+
+    <string name="w_nic_nehra">Nič nehrá</string>
+    <string name="w_bez_servera">Prehrávač zatiaľ nenájdený</string>
+    <string name="w_bez_servera_rada">Otvor appku — nájde ho a widget začne fungovať</string>
+
+    <string name="w_spanok">Spustiť</string>
+    <string name="w_uspat">Uspať</string>
+    <string name="w_spanok2">Pustiť</string>
+    <string name="w_vypnut">Vypnúť</string>
+    <string name="w_spanok_otazka">Spustiť Spánok na %1$s? Prehrávač preskočí na tretiu skladbu od konca, takže dohrajú už len posledné tri.</string>
+    <string name="w_uspat_otazka">Uspať počítač %1$s?</string>
+    <string name="w_spanok2_otazka">Pustiť Spánok 2 na %1$s? Prehrávač pridá skladby zo svojho zoznamu na koniec playlistu a hneď ich pustí.</string>
+    <string name="w_vypnut_otazka">Vypnúť počítač %1$s? Neuložená práca sa stratí.</string>
+    <string name="w_spustam_spanok">Spúšťam Spánok…</string>
+    <string name="w_uspavam">Uspávam…</string>
+    <string name="w_pustam">Púšťam…</string>
+    <string name="w_vypinam">Vypínam…</string>
+</resources>

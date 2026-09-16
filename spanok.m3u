@@ -1,0 +1,11 @@
+#EXTM3U
+# Zoznam skladieb pre tlacidlo "Spánok" v Metal Music Playeri.
+# Jedna cesta k suboru na riadok, poradie riadkov = poradie prehravania.
+# Riadky zacinajuce # su komentare a ignoruju sa.
+# Subor sa da editovat rucne, alebo v appke: prave tlacidlo mysi
+# na tlacidle "Spánok", pripadne prave tlacidlo na skladbe v playliste
+# a "Pridat do Spánok".
+#
+# Ci skladby po ukonceni prehravaca ostanu v playliste, sa uz neriesi
+# tu, ale v config.txt klucom SPANOK_NECHAT_V_PLAYLISTE=ano / nie.
+

@@ -1,0 +1,152 @@
+# Metal Music Player — konfigurácia
+# =====================================
+# Tento súbor načítava aplikácia pri štarte.
+# Riadky začínajúce # sú komentáre a ignorujú sa.
+
+# DeepL API kľúč pre preklad textov piesní
+# Získaš ho na: https://www.deepl.com/pro#developer (sekcia "DeepL API Free")
+# Kľúč vyzerá takto: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:fx
+#
+# Kľúč obsluhuje dva rôzne preklady:
+#   • prechod myšou nad slovom → preloží to jedno slovo (~6 znakov)
+#   • tlačidlo "Preložiť text"  → pošle CELÝ text jedným dopytom (~2 000 znakov)
+#
+# Tlačidlo je zámerne na klik, nie automaticky pri každej skladbe. Preklad sa
+# ukladá na disk vedľa textu (.lyrics\Nazov.sk.txt), takže tá istá skladba
+# stojí kvótu iba raz — pri druhom klepnutí sa už na DeepL nechodí.
+#
+# DeepL API Free má 500 000 znakov na zúčtovacie obdobie (mesiac) a obnovuje sa;
+# denný limit nie je. To je zhruba 250 preložených skladieb mesačne. Keď kvóta
+# dôjde, DeepL zastaví aj preklad slov pri prechode myšou — preto prehrávač
+# pred každým prekladom celého textu overí zostatok a:
+#   • keď by po preklade zostalo menej než 5 000 znakov, preklad NESPUSTÍ,
+#   • keď by zostalo menej než 50 000, preloží, ale upozorní.
+# Zostatok sa dá kedykoľvek zistiť aj ručne:
+#   curl.exe -s https://api-free.deepl.com/v2/usage -H "Authorization: DeepL-Auth-Key <kľúč>"
+DEEPL_API_KEY=
+
+# Kam tlačidlo "📦 Z Downloads" rozbaľuje hudbu.
+# Podpriečinok s rokom sa dopĺňa sám: _2026, _2027, ... (s podčiarkovníkom).
+# Ak riadok zakomentuješ alebo necháš prázdny, použije sa C:\data\mp3.
+# Fungujú aj premenné prostredia, napr. %USERPROFILE%\Music alebo sieťová cesta \\nas\hudba.
+MP3_TARGET=C:\data\mp3
+
+# ── Spánok a Spánok 2 ────────────────────────────────────────────────────────
+# Obe tlačidlá robia to isté, len z iného zoznamu: skladby zo svojho M3U
+# pridajú na koniec playlistu a hneď ich pustia. Keď už na konci playlistu
+# presne takto sú, nepridá sa nič — len sa na ne skočí, playlist sa nemení.
+# Vďaka tomu sa dá tlačidlo stláčať každý večer a playlist z toho nenarastie.
+#
+# "😴 Spánok"   = tvoj zoznam (keď si sám)
+# "💕 Spánok 2" = spoločný zoznam
+#
+# Keď je spanok.m3u prázdny, tlačidlo "Spánok" sa správa po starom:
+# skočí na tretiu skladbu od konca playlistu.
+
+# Kde sú zoznamy. Ak riadok zakomentuješ, použijú sa spanok.m3u a spanok2.m3u
+# v tomto priečinku. Relatívna cesta sa berie odtiaľto, fungujú aj premenné
+# prostredia.
+#SPANOK_PLAYLIST=spanok.m3u
+#SPANOK2_PLAYLIST=spanok2.m3u
+
+# Čo sa stane so skladbami po ukončení prehrávača.
+# nie (predvolené) = z playlistu sa zase vyhodia, ostane taký, aký bol predtým
+# ano              = ostanú v playliste aj na ďalší deň
+#
+# Uspanie ani vypnutie PC ukončenie NIE JE — po zobudení sú skladby stále tam
+# a ďalšie stlačenie tlačidla ich len znova pustí.
+SPANOK_NECHAT_V_PLAYLISTE=nie
+SPANOK2_NECHAT_V_PLAYLISTE=nie
+
+# ── Aktualizácie z NAS-u ─────────────────────────────────────────────────────
+# Prehrávač sa po spustení sám pozrie na NAS, či tam nie je novšia verzia.
+# Číta iba latest.json (pár stoviek bajtov); balík stiahne až po tvojom
+# potvrdení a pred inštaláciou overí jeho SHA-256.
+#
+# Keď NAS nie je dostupný (si mimo domu), nepovie nič — kontrola sa preskočí.
+#
+# Tvoje súbory update NEPREPÍŠE: config.txt, spanok.m3u ani spanok2.m3u.
+# Keď niektorý chýba (nová inštalácia), doplní sa vzor z balíka.
+
+# Priečinok na NAS-e s latest.json a balíkom. Prázdne = predvolený
+# \\nas.local\Android\PlayerPC. Fungujú aj premenné prostredia.
+#UPDATE_ZDROJ=\\nas.local\Android\PlayerPC
+
+# ano (predvolené) = kontrolovať pri každom spustení
+# nie              = nekontrolovať; ručne to ide cez "?" → Skontrolovať
+#                    aktualizáciu teraz
+UPDATE_KONTROLA=ano
+
+# ── Záloha playlistu na NAS ──────────────────────────────────────────────────
+# Playlist žije v jedinom súbore na tomto počítači
+# (%APPDATA%\LanMusicPlayer\state.json). Keď sa stroj pokazí alebo preinštaluje,
+# je preč — preto sa pri každom spustení odloží kópia na NAS:
+#
+#   \\nas.local\Android\PlayerPC\zalohy\<MENO-POCITACA>\
+#       playlist-2026-09-02-183012.m3u8
+#       README.txt        ako sa záloha vracia späť
+#
+# Zapisuje sa IBA pri zmene: keď playlist ostal taký, aký bol, na NAS-e
+# nepribudne nič (dátum v názve je teda dátum zmeny, nie každého spustenia).
+# Zálohuje sa playlist tak, ako ho appka mala pri poslednom behu — zmeny
+# z prebiehajúceho večera sa odložia až pri ďalšom spustení.
+#
+# Každý počítač má vlastný podpriečinok, lebo playlist má každý svoj.
+# Keď NAS nie je dostupný, záloha sa ticho preskočí (rovnako ako kontrola
+# aktualizácií). Ručne to ide cez "?" → "Zálohovať playlist teraz".
+#
+# Súbor je obyčajný M3U8 s celými cestami: vrátiš ho pretiahnutím myšou do okna
+# alebo tlačidlom "Načítať M3U" (skladby sa pridajú na koniec — na presnú
+# obnovu najprv "Vymazať playlist").
+
+# ano (predvolené) = zálohovať pri každom spustení
+# nie              = nezálohovať
+ZALOHA_PLAYLISTU=ano
+
+# Priečinok na NAS-e. Podpriečinok s menom počítača sa dopĺňa sám.
+# Prázdne = \\nas.local\Android\PlayerPC\zalohy. Fungujú aj premenné
+# prostredia, takže sa dá zálohovať hoci aj na USB kľúč.
+#ZALOHA_PRIECINOK=\\nas.local\Android\PlayerPC\zalohy
+
+# Koľko posledných záloh sa v priečinku nechá. Staršie sa mažú.
+#ZALOHA_POCET=30
+
+# ── Metalové novinky ─────────────────────────────────────────────────────────
+# Tlačidlo "🆕 Novinky" ukazuje nové albumy z piatkového skenu C:\NAS\metal-novinky.
+# Sken zapisuje, čo prešlo filtrom žánrov, do
+#
+#   \\nas.local\Android\PlayerPC\novinky\novinky.json
+#
+# Prehrávač ten súbor iba číta. Odškrtnutie ("už som to počul") ide do
+# precitane.log vedľa neho — preto platí na oboch notebookoch a preto sa album
+# zo zoznamu nikdy nemaže, len skryje. Zaškrtávadlo "Zobraziť aj skontrolované"
+# ho vráti späť.
+#
+# Keď NAS nie je dostupný (si mimo domu), použije sa posledná stiahnutá kópia
+# a odškrtnutia počkajú na najbližšie spojenie. Ticho, ako aktualizácie.
+
+# ano (predvolené) = ukazovať novinky
+# nie              = tlačidlo nič nenačíta
+NOVINKY=ano
+
+# Priečinok na NAS-e. Prázdne = \\nas.local\Android\PlayerPC\novinky.
+# Fungujú aj premenné prostredia.
+#NOVINKY_PRIECINOK=\\nas.local\Android\PlayerPC\novinky
+
+# ── Názvy rozbalených albumov ────────────────────────────────────────────────
+# Priečinok albumu sa pomenuje "Interpret - Album - Rok". Keď sa z názvu archívu
+# nedá vyčítať, kde končí kapela a začína album (napr. Blind-Guardian-Somewhere-
+# 2026-GRP), prehrávač sa opýta — najprv zoznamu noviniek, ktorý už má stiahnutý,
+# potom Metal Archives. MA pozná aj správny zápis: z "Behemoth-I-Scvlptor" spraví
+# "Behemoth - I, Scvlptor", z "Bootes-Void" spraví "Boötes Void".
+#
+# Keď sa nenájde zhoda, priečinok sa rozbalí pod pôvodným názvom. Nikdy sa
+# netipuje — cudzia kapela v názve priečinka je horšia než pôvodný neporiadok.
+#
+# Hľadanie na MA je jeden až štyri dopyty na archív (medzi nimi 1,5 s pauza),
+# takže rozbaľovanie s ním trvá o pár sekúnd dlhšie. Albumy zo zoznamu noviniek
+# sa vybavia bez siete.
+
+# ano (predvolené) = pýtať sa Metal Archives
+# nie              = rozhodovať len z názvu archívu, bez siete
+NAZVY_MA=ano

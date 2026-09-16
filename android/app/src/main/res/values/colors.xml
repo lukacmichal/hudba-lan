@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Paleta Windows appky (music_player/ui.py) -->
+    <color name="metal_bg">#FF1E1A16</color>
+    <color name="metal_accent">#FFD4860A</color>
+    <!-- Pozadie adaptívnej launcher ikonky (okraj čierneho kruhu pentagramu) -->
+    <color name="ic_launcher_bg">#FF0B0B0B</color>
+    <!--
+      Widget na plochu. Farby su TIE ISTE ako v appke aj vo windowsovom
+      prehravaci (`music_player/ui.py`) — widget bol do 27. 8. 2026 neutralne
+      sedy a vedla appky vyzeral, akoby patril niekomu inemu.
+    -->
+    <color name="metal_surface">#FF2B2520</color>
+    <color name="metal_border">#FF3D3025</color>
+    <color name="metal_text">#FFF5EAD1</color>
+    <color name="metal_text_secondary">#FFA08060</color>
+    <color name="metal_accent_light">#FFF0B44C</color>
+
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

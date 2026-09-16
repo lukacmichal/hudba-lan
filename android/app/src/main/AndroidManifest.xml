@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Len na to, aby pocitadlo dat vedelo rozlisit Wi-Fi od mobilnych dat
+         (Prenos.kt). Ziadny pristup k sieti navyse z toho neplynie. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- Backup is off on purpose: the app stores the NAS password. With backup on
+         it would travel to Google's cloud and get copied over on device transfer.
+         dataExtractionRules covers Android 12+, where device transfer is decided
+         separately from allowBackup. Same setup as stocks and homesecure. -->
+    <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="LAN Music"
+        android:theme="@style/Theme.Sklanmusic"
+        android:usesCleartextTraffic="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".service.StreamService"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!--
+          Widget na ovladanie prehravaca. `exported="false"` staci: prikazy
+          posiela iba nas vlastny PendingIntent, cudzia appka sa doňho nedostane.
+        -->
+        <receiver
+            android:name=".widget.OvladacWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/ovladac_widget_info" />
+        </receiver>
+
+        <!--
+          Otazka pred uspanim/vypnutim pocitaca z widgetu. Dialogova tema =
+          male okno nad plochou, nie cela appka; excludeFromRecents, aby to
+          neostavalo v prehlade poslednych.
+        -->
+        <activity
+            android:name=".widget.PotvrdenieActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Material.Dialog.Alert" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>
