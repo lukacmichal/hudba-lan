@@ -11,6 +11,28 @@ Python, 4 000 lines of Kotlin, ~220 Python tests and ~40 on the Android side.
 
 Python · PySide6 · ffmpeg · Kotlin · Jetpack Compose · LibVLC
 
+## What it looks like
+
+<img src="docs/screenshots/player.png" alt="The PC player: playlist with track lengths, cover art, lyrics pane and the sleep buttons" width="760">
+
+The PC player. The row above the playlist is most of the app in one line: two
+*sleep* playlists, the importer that unpacks a downloaded album and renames it,
+the weekly new-releases list, and the statistics. The line at the bottom says
+whether the LAN stream is up — the address next to it is blanked out, it is a
+real address on my home network.
+
+<img src="docs/screenshots/remote.png" alt="The Android remote: what is playing, transport controls, volume and the whole playlist" width="240">
+
+The phone, showing the same playlist the PC has, with the current track marked.
+*Streaming nedostupný* is honest: nothing is playing at that moment, so ffmpeg
+is not running and there is no stream to join. This shot was taken in an
+emulator, where a UDP broadcast from the PC never arrives, so the player was
+reached through the manual address the settings offer for exactly that case —
+on a phone on the same Wi-Fi the discovery finds it without typing anything.
+
+The interface is Slovak, and the playlist in both shots is a stand-in — my own
+library has no business being in a portfolio screenshot.
+
 ## The pieces
 
 ```
