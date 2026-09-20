@@ -19,12 +19,12 @@ The PC player. The row above the playlist is most of the app in one line: two
 *sleep* playlists, the importer that unpacks a downloaded album and renames it,
 the weekly new-releases list, and the statistics. On the right, the cover and
 the *Metal Archives* link above it are what the player found for this album on
-its own — the same lookup that renames the folder. Under the cover are the
-lyrics, blurred here on purpose: they are someone else's writing and this is a
-public page. In the app they are readable, and the button below them sends
-them to DeepL and keeps the translation on disk next to the track, so the same
-song costs the quota once. The line at the bottom says whether the LAN stream
-is up — the address next to it is blanked out, it is a real address on my home
+its own — the same lookup that renames the folder. The pane under the cover is
+for lyrics, and it is empty here because the selected track is an instrumental;
+for a track with words it fills in by itself, and the button below sends them
+to DeepL and keeps the translation on disk next to the track, so the same song
+costs the quota once. The line at the bottom says whether the LAN stream is up
+— the address next to it is blanked out, it is a real address on my home
 network.
 
 <img src="docs/screenshots/remote.png" alt="The Android remote: what is playing, transport controls, volume and the whole playlist" width="240">
