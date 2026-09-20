@@ -1,18 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Vychodzie su 4 bunky na sirku a 2 na vysku: sest tlacidiel v rade potrebuje
-  sirku a nad nimi je este nazov skladby s interpretom.
+  Vychodzie su 4 bunky na sirku a 2 na vysku: tri riadky (skladba so
+  spankami, prehravanie, hlasitost) potrebuju spolu 128 dp.
 
   Da sa stiahnut na 2x1 — vtedy sa nazov aj tlacidla zmensia, ale ostanu
   vsetky. Skryvat pri uzkom widgete niektore tlacidlo by znamenalo, ze sa
   poloha ostatnych meni podla sirky a ruka by uz netrafila to iste miesto.
+  Jedina vynimka je VYSKA: pod 120 dp sa skryje riadok hlasitosti, a to
+  cely naraz a na konci, takze nic nad nim sa nepohne.
+
+  minHeight je 110 dp (19. 9. 2026, predtym 70): targetCellHeight je az od
+  Androidu 12, domaci telefon ma 10 a pocet buniek odvodi z minHeight. Podla
+  vzorca z dokumentacie (70 × n − 30 dp) su 110 dp dve bunky; ako to rata
+  launcher na telefone, overene nie je. Uz polozeneho widgetu sa to netyka.
 
   updatePeriodMillis je 0: widget sam na siet nechodi. Nazov skladby doňho
   zapisuje appka pri kazdom pollnuti metadat.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="180dp"
-    android:minHeight="70dp"
+    android:minHeight="110dp"
     android:minResizeWidth="110dp"
     android:minResizeHeight="40dp"
     android:targetCellWidth="4"

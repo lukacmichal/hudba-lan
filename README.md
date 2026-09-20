@@ -17,9 +17,15 @@ Python · PySide6 · ffmpeg · Kotlin · Jetpack Compose · LibVLC
 
 The PC player. The row above the playlist is most of the app in one line: two
 *sleep* playlists, the importer that unpacks a downloaded album and renames it,
-the weekly new-releases list, and the statistics. The line at the bottom says
-whether the LAN stream is up — the address next to it is blanked out, it is a
-real address on my home network.
+the weekly new-releases list, and the statistics. On the right, the cover and
+the *Metal Archives* link above it are what the player found for this album on
+its own — the same lookup that renames the folder. Under the cover are the
+lyrics, blurred here on purpose: they are someone else's writing and this is a
+public page. In the app they are readable, and the button below them sends
+them to DeepL and keeps the translation on disk next to the track, so the same
+song costs the quota once. The line at the bottom says whether the LAN stream
+is up — the address next to it is blanked out, it is a real address on my home
+network.
 
 <img src="docs/screenshots/remote.png" alt="The Android remote: what is playing, transport controls, volume and the whole playlist" width="240">
 
@@ -30,8 +36,7 @@ emulator, where a UDP broadcast from the PC never arrives, so the player was
 reached through the manual address the settings offer for exactly that case —
 on a phone on the same Wi-Fi the discovery finds it without typing anything.
 
-The interface is Slovak, and the playlist in both shots is a stand-in — my own
-library has no business being in a portfolio screenshot.
+The interface is Slovak.
 
 ## The pieces
 
@@ -56,6 +61,12 @@ library has no business being in a portfolio screenshot.
 - **Remote** — the phone shows what is playing and controls the player; the
   widget has four buttons for the evening: start one of two "falling asleep"
   playlists, put the PC to sleep, or shut it down — each behind a confirmation.
+  It also has a volume strip, which is not a slider: `RemoteViews` has no
+  `SeekBar`, and a drag across a widget belongs to the launcher, not to the
+  app. So the strip is a `ProgressBar` with twenty invisible tiles over it,
+  each carrying its own "set volume to 5 / 10 / … / 100 %" — and each needing
+  its own PendingIntent request code, because two PendingIntents that differ
+  only in an extra are the same intent to Android.
 - **Self-update** — both the PC app and the Android app update themselves from
   my NAS. The PC checks only a few hundred bytes of `latest.json`, asks, then
   downloads the package, verifies its SHA-256, replaces itself and restarts.

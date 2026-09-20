@@ -1,10 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Widget na ovladanie prehravaca na pocitaci. Dva riadky:
+  Widget na ovladanie prehravaca na pocitaci. Tri riadky:
 
     hore vlavo  nazov skladby a interpret
     hore vpravo Spanok / uspat / Spanok 2 / vypnut  — vsetky styri cez potvrdenie
-    dole        prevracanie a prehravanie
+    stred       prevracanie a prehravanie
+    dole        hlasitost: reproduktor (stlmit) a pas ako posuvnik
+
+  Hlasitost (19. 9. 2026) ma VLASTNY riadok, nie dve tlacidla navyse vedla
+  prehravania: tam by styri tlacidla, na ktore je ruka zvyknuta, zuzili
+  a posunuli. Pridana je NA KONIEC, takze horne dva riadky zostali, kde boli.
+  Tuknutie na reproduktor stlmi / vrati hlasitost — rovnako ako v appke.
+
+  PAS NIE JE SeekBar. Ten medzi triedami, ktore launcher nafukne, nie je,
+  a widget navyse dostava len tuknutia — tahanie prstom by launcher zobral
+  ako prechod na dalsiu stranu plochy. Pas je preto dvojvrstvovy:
+  `w_pas` (ProgressBar) len UKAZUJE hlasitost a nad nim je `w_pas_dotyk`,
+  rad dvadsiatich neviditelnych dielikov (widget_hlasitost_dielik.xml),
+  kazdy s vlastnym prikazom "nastav na 5 / 10 / … / 100 %". Tuknes kam
+  chces a hlasitost je tam. Dieliky sa pridavaju z kodu, nie tu — dvadsat
+  rovnakych TextView by z tohto suboru spravilo zoznam, v ktorom sa strati
+  vsetko ostatne.
+
+  Prva verzia (2.9) mala tlacidla tichsie / hlasnejsie a cislo. Chcel sa
+  posuvnik, tak ju 2.10 nahradila.
+
+  Na widgete vysokom jednu bunku sa tri riadky nezmestia. Vtedy sa riadok
+  hlasitosti SKRYJE (OvladacWidgetProvider.prekresli) — inak by ho
+  LinearLayout vtlacil na ukor prehravania, ktore ma vahu a ustupilo by prve.
 
   "Spanok" (31. 8. 2026) pribudol ZLAVA, nie na koniec radu. Skupina je totiz
   zarovnana doprava — nazov skladby berie zvysok sirky — takze tlacidlo pridane
@@ -120,7 +143,7 @@
             android:src="@drawable/ic_power" />
     </LinearLayout>
 
-    <!-- ── dolny riadok: prehravanie ────────────────────────────────────── -->
+    <!-- ── stredny riadok: prehravanie ──────────────────────────────────── -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -172,5 +195,57 @@
             android:scaleType="fitCenter"
             android:padding="8dp"
             android:src="@drawable/ic_stop" />
+    </LinearLayout>
+
+    <!-- ── spodny riadok: hlasitost ─────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/w_hlasitost_riadok"
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/w_stlmit"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@drawable/widget_tlacidlo_bg"
+            android:contentDescription="@string/w_stlmit"
+            android:scaleType="fitCenter"
+            android:padding="6dp"
+            android:src="@drawable/ic_hlasitost" />
+
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp">
+
+            <!--
+              Styl ako ODKAZ na styl (@android:style/…), nie atribut temy
+              (?android:attr/progressBarStyleHorizontal) — ten by sa v launcheri
+              nemal podla coho rozlozit, rovnako ako pozadie tlacidiel kedysi.
+            -->
+            <ProgressBar
+                android:id="@+id/w_pas"
+                style="@android:style/Widget.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="8dp"
+                android:layout_gravity="center_vertical"
+                android:indeterminate="false"
+                android:max="100"
+                android:maxHeight="8dp"
+                android:minHeight="8dp"
+                android:progress="0"
+                android:progressDrawable="@drawable/widget_hlasitost_pas" />
+
+            <LinearLayout
+                android:id="@+id/w_pas_dotyk"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal" />
+        </FrameLayout>
     </LinearLayout>
 </LinearLayout>

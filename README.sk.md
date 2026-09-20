@@ -51,6 +51,10 @@ Aktualne obsahuje:
 - widget na ploche telefonu ma vpravo hore vsetky styri uspavacie tlacidla:
   `Spanok` / uspat PC / `Spanok 2` / vypnut PC —
   kazde cez potvrdzovaciu otazku
+- v spodnom riadku widgetu je hlasitost PC ako pas: tuknes kam chces
+  a hlasitost je tam (po 5 %), reproduktor vlavo stlmi a vrati (API akcia
+  `setVolume`, ako posuvnik v appke). Skutocny posuvnik widget mat nemoze —
+  `RemoteViews` SeekBar nepoznaju a tahanie berie launcher sebe
 - pripraveny prepinac pre `vypnut PC po poslednej skladbe`
 - lokalne `now playing` API na `http://<ip>:8765/api/now-playing`
 

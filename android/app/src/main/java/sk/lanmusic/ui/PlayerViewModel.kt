@@ -353,6 +353,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     titul = nowPlaying.title,
                     interpret = nowPlaying.artist,
                     hra = nowPlaying.state == "playing",
+                    hlasitost = nowPlaying.volume,
                 )
                 OvladacWidgetProvider.prekresliVsetky(ctx)
                 followStream(nowPlaying.streamingActive, nowPlaying.streamUrl)

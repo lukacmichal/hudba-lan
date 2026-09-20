@@ -81,8 +81,13 @@ android {
         // 2.7 (25) — do pocitadla dat sa rata aj PRUD HUDBY (LibVLC
         // stats.readBytes); bez neho ukazovalo kilobajty tam, kde islo
         // o desiatky megabajtov.
-        versionCode = 27
-        versionName = "2.8.1"
+        // 2.9 (28) — vo widgete riadok hlasitosti: tichsie / cislo / hlasnejsie
+        // po 5, tuknutie na cislo stlmi. Na PC ten isty `setVolume` ako posuvnik.
+        // 2.10 (29) — z tlacidiel −/+ je PAS: tuknes kam chces a hlasitost
+        // je tam (20 dielikov po 5 %). Skutocny posuvnik widget mat nemoze,
+        // `RemoteViews` SeekBar nepoznaju a tahanie berie launcher sebe.
+        versionCode = 29
+        versionName = "2.10"
 
         buildConfigField("String", "NAS_HOST", nasField("NAS_HOST"))
         buildConfigField("String", "NAS_SHARE", nasField("NAS_SHARE"))

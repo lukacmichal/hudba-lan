@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Jeden z dvadsiatich neviditelnych dielikov nad pasom hlasitosti
+  (widget_ovladac.xml, `w_pas_dotyk`). Kazdy nastavi inu hlasitost —
+  prikaz mu da OvladacWidgetProvider pri kazdom prekresleni.
+
+  TextView, nie View: holy View launcher nenafukne (vid widget_ovladac.xml).
+  Stlaceny dielik sa rozsvieti jantarovo, takze je vidiet, kam prst trafil.
+-->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_dielik"
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:background="@drawable/widget_tlacidlo_bg" />
