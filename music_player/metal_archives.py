@@ -131,11 +131,6 @@ def search_album(artist: str, album: str) -> int | None:
     except Exception:
         return None
 
-    if not rows:
-        with _cache_lock:
-            _album_cache[key] = None
-        return None
-
     artist_lower = artist.strip().lower()
     album_lower = _clean_album_title(album).strip().lower() or album.strip().lower()
     best_id = None
@@ -161,10 +156,81 @@ def search_album(artist: str, album: str) -> int | None:
         if best_id is None and found_band == artist_lower:
             best_id = album_id
 
+    if best_id is None:
+        best_id = _album_z_diskografie(artist, album)
+
     with _cache_lock:
         _album_cache[key] = best_id
 
     return best_id
+
+
+# ── nazov albumu s preklepom ──────────────────────────────────────────────────
+# Hladanie na MA berie nazov vydania doslova: jedno zle pismeno a nenajde nic.
+# Tagy stiahnutych albumov take preklepy maju — Christ Dismembered vydali
+# "Ov Vampiricy", tagy hovoria "Ov Vampiracy" (21. 9. 2026), a prehravac k albumu
+# preto nemal ani odkaz na MA, ani obal. Zalozne sa preto prejde diskografia
+# kapely a prijme sa nazov, ktory sa lisi najviac jednym pismenom v jednom slove.
+# Kratke slova a cisla sa neodpustaju: "Death II" oproti "Death III" alebo
+# "Live 2014" oproti "Live 2015" su ine vydania, nie preklep.
+_MIN_DLZKA_PREKLEPU = 5
+
+
+def _slova_nazvu(title: str) -> list[str]:
+    """Nazov albumu na porovnanie: slova bez diakritiky, velkych pismen a interpunkcie.
+
+    Apostrof sa zahodi bez medzery, aby "Fool's" a "Fools" bolo to iste slovo.
+    """
+    text = _normalize_text(_clean_album_title(title)).lower()
+    text = re.sub(r"['’`]", "", text)
+    return re.findall(r"[^\W_]+", text)
+
+
+def _jeden_preklep(a: str, b: str) -> bool:
+    """Lisia sa slova o jedno pismeno — zamenene, chybajuce, navyse alebo dve prehodene?"""
+    if abs(len(a) - len(b)) > 1:
+        return False
+    i = 0
+    while i < min(len(a), len(b)) and a[i] == b[i]:
+        i += 1
+    a, b = a[i:], b[i:]
+    if len(a) == len(b):
+        return a[1:] == b[1:] or (a[:2] == b[1::-1] and a[2:] == b[2:])
+    kratsie, dlhsie = sorted((a, b), key=len)
+    return kratsie == dlhsie[1:]
+
+
+def _zhoda_nazvu(nase: list[str], ich: list[str]) -> int:
+    """2 = ten isty nazov, 1 = jeden preklep v jednom slove, 0 = iny album."""
+    if nase == ich:
+        return 2
+    if len(nase) != len(ich):
+        return 0
+    rozdiel = [(a, b) for a, b in zip(nase, ich) if a != b]
+    if len(rozdiel) != 1:
+        return 0
+    a, b = rozdiel[0]
+    if min(len(a), len(b)) < _MIN_DLZKA_PREKLEPU or any(c.isdigit() for c in a + b):
+        return 0
+    return 1 if _jeden_preklep(a, b) else 0
+
+
+def _album_z_diskografie(artist: str, album: str) -> int | None:
+    """Album kapely, ktoreho nazov sa od tagu lisi len zapisom alebo preklepom.
+
+    Preklep sa prijme, iba ked na neho sedi jedine vydanie — pri dvoch sa netipuje.
+    """
+    nase = _slova_nazvu(album)
+    if not nase:
+        return None
+    preklepy: set[int] = set()
+    for album_id, nazov, _typ in _search_band_albums(artist):
+        zhoda = _zhoda_nazvu(nase, _slova_nazvu(nazov))
+        if zhoda == 2:
+            return album_id
+        if zhoda == 1:
+            preklepy.add(album_id)
+    return preklepy.pop() if len(preklepy) == 1 else None
 
 
 def _normalize_text(text: str) -> str:
@@ -181,8 +247,19 @@ def _normalize_text(text: str) -> str:
     return ascii_ish.translate(extra)
 
 
+def _meno_kapely(name: str) -> str:
+    return re.sub(r"\s+", " ", _normalize_text(unescape(name))).strip().lower()
+
+
 def _search_band_albums(artist: str) -> list[tuple[int, str, str]]:
-    """Search all albums by a band. Returns [(album_id, album_title, type)]."""
+    """Search all albums by a band. Returns [(album_id, album_title, type)].
+
+    MA hlada kapelu podla casti mena — "Dismembered" vrati 82 kapiel od
+    Christ Dismembered po Dismembered Pig. Preto sa riadky filtruju na kapelu
+    s presne tymto menom (split sa nechava, ked je medzi kapelami). Presnu
+    zhodu na strane MA (`exactBandMatch`) pouzit nejde: nerozlisuje diakritiku,
+    takze "Bootes Void" by Boötes Void nenasiel.
+    """
     artist_normalized = _normalize_text(artist)
     band_lower = artist_normalized.strip().lower()
     with _cache_lock:
@@ -207,8 +284,13 @@ def _search_band_albums(artist: str) -> list[tuple[int, str, str]]:
     except Exception:
         return []
 
+    hladana_kapela = _meno_kapely(artist)
     albums: list[tuple[int, str, str]] = []
     for row in rows:
+        band_html = row[0] if len(row) > 0 else ""
+        kapely = {_meno_kapely(m) for m in re.findall(r">([^<]+)</a>", band_html)}
+        if hladana_kapela not in kapely:
+            continue
         album_html = row[1] if len(row) > 1 else ""
         typ = unescape(row[2]).strip() if len(row) > 2 else ""
         match = re.search(r'href="[^"]+/(\d+)"[^>]*>([^<]+)<', album_html)

@@ -1,0 +1,44 @@
+{
+  "manifest_version": 2,
+  "name": "Metal Music Player",
+  "version": "1.1",
+  "description": "Ovládanie Metal Music Playera (hudba-lan) z lišty Firefoxu: čo hrá, play/pauza, posun, hlasitosť, Spánok a playlist. Drží stav aj pre tlačidlá ⏮ ⏯ ⏭ 🔇.",
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png"
+  },
+  "browser_action": {
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    },
+    "default_title": "Metal Music Player",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "scripts": [
+      "pozadie.js"
+    ]
+  },
+  "permissions": [
+    "storage",
+    "http://127.0.0.1/*",
+    "http://localhost/*",
+    "http://192.168.1.50/*",
+    "http://192.168.1.51/*"
+  ],
+  "optional_permissions": [
+    "http://*/*"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "metal-music-player@lukacmichal",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  }
+}

@@ -353,6 +353,20 @@ class OvladacWidgetProvider : AppWidgetProvider() {
                 PotvrdenieActivity.pendingIntent(ctx, PotvrdenieActivity.CO_VYPNUT, 6),
             )
 
+            // Mys otvori appku rovno na touchpade (MainActivity.EXTRA_TOUCHPAD).
+            // Vlastny request kod 9 — s nazvom (0) sa lisi len extra hodnotou
+            // a dva take PendingIntenty by Android zlucil do jedneho.
+            v.setOnClickPendingIntent(
+                R.id.w_touchpad,
+                PendingIntent.getActivity(
+                    ctx, 9,
+                    Intent(ctx, MainActivity::class.java)
+                        .putExtra(MainActivity.EXTRA_TOUCHPAD, true)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                ),
+            )
+
             // Tuknutie na nazov otvori appku (a s nou vyhladavanie prehravaca).
             v.setOnClickPendingIntent(
                 R.id.w_titul,

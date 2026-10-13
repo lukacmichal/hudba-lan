@@ -80,6 +80,8 @@ fun PlayerScreen(
     onSaveUpdateSettings: (UpdateConfig) -> Unit,
     onSaveManualServer: (String, Int) -> Unit,
     onTestConnection: suspend (UpdateConfig) -> String,
+    touchpadZiadost: Boolean = false,
+    onTouchpadZiadostVybavena: () -> Unit = {},
 ) {
     val isFound = uiState.discovery is DiscoveryState.Found
     // null = no dialog; "sleep" / "shutdown" / "sleep2" = confirm that action
@@ -90,6 +92,15 @@ fun PlayerScreen(
     // startup check must stay invisible.
     var manualCheck by remember { mutableStateOf(false) }
     var updateMessage by remember { mutableStateOf<String?>(null) }
+    var showTouchpad by rememberSaveable { mutableStateOf(false) }
+    // Mys vo widgete: touchpad sa ukaze, hned ako je PC najdeny (dovtedy
+    // bezi hlavna obrazovka s hladanim servera).
+    LaunchedEffect(touchpadZiadost) {
+        if (touchpadZiadost) {
+            showTouchpad = true
+            onTouchpadZiadostVybavena()
+        }
+    }
 
     LaunchedEffect(uiState.updateState) {
         if (!manualCheck) return@LaunchedEffect
@@ -105,9 +116,21 @@ fun PlayerScreen(
         }
     }
 
+    // Touchpad zaberie celu obrazovku; spat sa ide krizikom alebo gestom spat.
+    // Ked sa PC medzitym strati, touchpad sa zavrie sam — nema kam posielat.
+    val server = uiState.discovery as? DiscoveryState.Found
+    if (showTouchpad && server != null) {
+        TouchpadScreen(server.ip, server.port, onZavriet = { showTouchpad = false })
+        return
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            // Android 15 kresli appku (targetSdk 35) aj pod stavovy riadok —
+            // hlavicka by bola pod hodinami a koliecko by sa nedalo stlacit.
+            // Na starsich Androidoch su tieto okraje nulove.
+            .systemBarsPadding()
             // Vodorovne 12dp, zvisle 8dp: kazdy usetreny bod hore aj dole je
             // dalsi kus playlistu, ktory sa na obrazovku zmesti.
             .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -134,6 +157,15 @@ fun PlayerScreen(
             // appke skryvali pod ⋮, inde boli text alebo tlacidlo — a clovek
             // ich v kazdej hladal inde. V ⋮ ostava len to, co je vlastne tejto
             // appke (uspatie a vypnutie PC).
+            // Vlastna akcia appky (docs/shared-standard.md 2.6): telefon ako touchpad pre PC.
+            if (isFound) {
+                IconButton(
+                    onClick = { showTouchpad = true },
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(MysIcon, contentDescription = "Touchpad pre PC")
+                }
+            }
             IconButton(
                 onClick = { showUpdateSettings = true },
                 modifier = Modifier.size(36.dp),
@@ -829,6 +861,15 @@ private fun eyeVector(name: String, pathData: String): ImageVector =
         pathData = addPathNodes(pathData),
         fill = SolidColor(Color.White),   // overridden by Icon's tint
     ).build()
+
+// Material "mouse" glyph.
+private val MysIcon by lazy {
+    eyeVector(
+        "Mouse",
+        "M13,1.07V9h7c0,-4.08 -3.05,-7.44 -7,-7.93zM4,15c0,4.42 3.58,8 8,8s8,-3.58 8,-8v-4H4v4z" +
+            "m7,-13.93C7.05,1.56 4,4.92 4,9h7V1.07z",
+    )
+}
 
 private val EyeIcon by lazy {
     eyeVector(

@@ -11,6 +11,7 @@
     <string name="w_sleep">Uspať počítač</string>
     <string name="w_sleep2">Spánok 2 — pustiť skladby zo zoznamu</string>
     <string name="w_shutdown">Vypnúť počítač</string>
+    <string name="w_touchpad">Touchpad pre počítač</string>
     <string name="w_stlmit">Stlmiť alebo vrátiť hlasitosť</string>
     <!-- Popis dielika pásu hlasitosti pre čítačku obrazovky. Slovenčina píše medzeru pred %. -->
     <string name="w_hlasitost_na">Hlasitosť %1$d %%</string>

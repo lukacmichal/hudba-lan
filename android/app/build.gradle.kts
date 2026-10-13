@@ -86,8 +86,12 @@ android {
         // 2.10 (29) — z tlacidiel −/+ je PAS: tuknes kam chces a hlasitost
         // je tam (20 dielikov po 5 %). Skutocny posuvnik widget mat nemoze,
         // `RemoteViews` SeekBar nepoznaju a tahanie berie launcher sebe.
-        versionCode = 29
-        versionName = "2.10"
+        // 2.11 (30) — touchpad: ikonka mysi v hlavicke, telefon ovlada kurzor
+        // PC cez `POST /api/mouse` (PC appka od 1.20).
+        // 2.12 (31) — ikonka mysi aj vo widgete (vlavo od uspavacich), otvori
+        // appku rovno na touchpade.
+        versionCode = 31
+        versionName = "2.12"
 
         buildConfigField("String", "NAS_HOST", nasField("NAS_HOST"))
         buildConfigField("String", "NAS_SHARE", nasField("NAS_SHARE"))

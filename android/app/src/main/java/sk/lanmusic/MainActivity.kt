@@ -9,6 +9,8 @@ import androidx.activity.viewModels
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import sk.lanmusic.service.StreamService
 import sk.lanmusic.ui.MetalTheme
 import sk.lanmusic.ui.PlayerScreen
@@ -18,6 +20,24 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: PlayerViewModel by viewModels()
     private var isBound = false
+
+    /** Widget chce appku rovno na touchpade. Po otvoreni sa vynuluje. */
+    private var touchpadZiadost by mutableStateOf(false)
+
+    private fun precitajZiadost(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_TOUCHPAD, false) == true) {
+            touchpadZiadost = true
+            // Po otoceni obrazovky sa Activity vytvori znova s tym istym
+            // intentom — zavrety touchpad sa nesmie otvorit sam od seba.
+            intent.removeExtra(EXTRA_TOUCHPAD)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        precitajZiadost(intent)
+    }
 
     /**
      * Velkost pisma z Nastaveni. Appka bezi na Compose a nema
@@ -41,6 +61,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) precitajZiadost(intent)
         setContent {
             MetalTheme {
                 Surface {
@@ -71,6 +92,8 @@ class MainActivity : ComponentActivity() {
                         onSaveUpdateSettings = viewModel::onUpdateSettingsSaved,
                         onSaveManualServer = viewModel::onManualServerSaved,
                         onTestConnection = viewModel::testConnection,
+                        touchpadZiadost = touchpadZiadost,
+                        onTouchpadZiadostVybavena = { touchpadZiadost = false },
                     )
                 }
             }
@@ -94,6 +117,10 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         val intent = Intent(this, StreamService::class.java)
         isBound = bindService(intent, viewModel.serviceConnection, BIND_AUTO_CREATE)
+    }
+
+    companion object {
+        const val EXTRA_TOUCHPAD = "sk.lanmusic.TOUCHPAD"
     }
 
     override fun onStop() {

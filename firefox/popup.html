@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <title>Metal Music Player</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon-32.png" alt="" width="20" height="20">
+    <div id="stav" class="stav">Hľadám prehrávač…</div>
+    <button id="nastavenia-btn" class="ikona" title="Kde hľadať prehrávač">⚙</button>
+  </header>
+  <div id="hostia" class="hostia" hidden></div>
+
+  <section id="prehravac" hidden>
+    <div id="titul" class="titul"></div>
+    <div id="interpret" class="interpret"></div>
+    <div id="pas" class="pas" title="Klik = posun v skladbe"><div id="pas-plny" class="pas-plny"></div></div>
+    <div class="casy"><span id="cas">0:00</span><span id="dlzka">0:00</span></div>
+
+    <div class="ovladanie">
+      <button id="prev" title="Predchádzajúca (druhý klik na začiatku skladby)">⏮</button>
+      <button id="playpause" class="hlavne" title="Hrať / pauza">▶</button>
+      <button id="stop" title="Stop">⏹</button>
+      <button id="next" title="Ďalšia">⏭</button>
+    </div>
+
+    <div class="hlasitost">
+      <button id="stlmit" class="ikona" title="Stlmiť / vrátiť">🔊</button>
+      <input id="hlasitost" type="range" min="0" max="100" step="1" value="0">
+      <span id="hlasitost-cislo" class="cislo">0</span>
+    </div>
+
+    <div class="spanky">
+      <button id="spanok" data-akcia="spanok" title="Pridá zoznam Spánok na koniec playlistu a pustí ho — ako tlačidlo v prehrávači">😴 Spánok</button>
+      <button id="spanok2" data-akcia="sleep2" title="To isté so zoznamom Spánok 2">💕 Spánok 2</button>
+    </div>
+
+    <div class="playlist-hlava">
+      <input id="hladaj" type="search" placeholder="Hľadať v playliste…" autocomplete="off">
+      <button id="aktualna" class="ikona" title="Skok na práve hrajúcu">⏵</button>
+    </div>
+    <ol id="playlist" class="playlist"></ol>
+    <div id="pocet" class="pocet"></div>
+  </section>
+
+  <section id="nedostupny" class="nedostupny" hidden>
+    <p id="nedostupny-text"></p>
+    <button id="skusit">Skúsiť znova</button>
+  </section>
+
+  <section id="nastavenia" class="nastavenia" hidden>
+    <label for="hostia-pole">Kde hľadať prehrávač — jedna adresa na riadok, port 8765 sa doplní sám:</label>
+    <textarea id="hostia-pole" rows="4" spellcheck="false"></textarea>
+    <div class="riadok">
+      <button id="ulozit">Uložiť</button>
+      <button id="predvolene">Predvolené</button>
+    </div>
+    <p id="nastavenia-sprava" class="sprava"></p>
+  </section>
+
+  <script src="popup.js"></script>
+</body>
+</html>

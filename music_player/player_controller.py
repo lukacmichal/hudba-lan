@@ -7,8 +7,10 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
 from PySide6.QtMultimedia import QAudioOutput, QMediaDevices, QMediaPlayer
 
+from music_player import zalozky as zalozky_modul
 from music_player.models import Track, collect_audio_paths
 from music_player.persistence import AppState
+from music_player.zalozky import Zalozka
 from music_player.streaming import FfmpegStreamManager
 from music_player.system_integration import shutdown_windows, sleep_windows
 
@@ -43,6 +45,8 @@ class PlayerController(QObject):
     # Vystrelí, ked sa z playlistu vratia skladby spankovych zoznamov — UI si
     # na to vesia ulozenie stavu, aby na disku uz nikdy neostali.
     playlist_restored = Signal()
+    # Pribudla/ubudla zalozka alebo sa posunula jej pozicia v playliste.
+    zalozky_changed = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -68,6 +72,8 @@ class PlayerController(QObject):
         # sebou; kazdy zoznam je vtedy chvostom playlistu az dovtedy, kym za nim
         # nepribudne dalsi, takze sa musia odvijat v opacnom poradi.
         self._spanok_pending: list[tuple[str, list[str], int]] = []
+        # Skladby, od ktorych sa da jednym klikom zacat hrat (music_player.zalozky).
+        self.zalozky: list[Zalozka] = []
         self._scheduled_timer = QTimer(self)
         self._scheduled_timer.setInterval(30_000)
         self._scheduled_timer.timeout.connect(self._on_scheduled_timer_tick)
@@ -129,6 +135,7 @@ class PlayerController(QObject):
     def load_state(self, state: AppState) -> None:
         self.playlist = list(state.playlist)
         self._bump_playlist_version()
+        self.zalozky = [Zalozka(z.path, z.index) for z in state.zalozky]
         self.recent_tracks = list(state.recent_tracks)
         self.shutdown_when_playlist_ends = bool(state.shutdown_when_playlist_ends)
         self.sleep_when_playlist_ends = bool(state.sleep_when_playlist_ends)
@@ -186,6 +193,7 @@ class PlayerController(QObject):
             playlist_window_visible=playlist_window_visible,
             total_tracks_played=self.total_tracks_played,
             total_listen_ms=self._effective_listen_ms(),
+            zalozky=[Zalozka(z.path, z.index) for z in self.zalozky],
         )
 
     def available_output_devices(self) -> list[tuple[str, str]]:
@@ -258,6 +266,7 @@ class PlayerController(QObject):
         first_added_index: int | None = None
         playlist_was_empty = not self.playlist
         insert_pos = insert_at if insert_at is not None else len(self.playlist)
+        zalozky_pred = self._zalozky_skladby()
 
         for path in collect_audio_paths(paths):
             self.playlist.insert(insert_pos, Track.from_path(path))
@@ -273,6 +282,7 @@ class PlayerController(QObject):
             self.resume_position_ms = 0
 
         if added:
+            self._dorovnaj_zalozky(zalozky_pred)
             self._bump_playlist_version()
             self.playlist_changed.emit()
             self.current_track_changed.emit(self.current_track())
@@ -300,8 +310,9 @@ class PlayerController(QObject):
         # fire because the true end is never reached).  Reordering only shuffles
         # existing Track instances, so object identity survives the rebuild.
         current_track_obj = self.playlist[self.current_index] if 0 <= self.current_index < len(self.playlist) else None
+        zalozky_pred = self._zalozky_skladby()
 
-        remaining = [t for i, t in enumerate(self.playlist) if i not in set(sorted_src)]
+        remaining =[t for i, t in enumerate(self.playlist) if i not in set(sorted_src)]
 
         # Adjust target for removed items above it.
         adjusted_target = target - sum(1 for i in sorted_src if i < target)
@@ -318,6 +329,7 @@ class PlayerController(QObject):
                     break
 
         new_selection = list(range(adjusted_target, adjusted_target + len(moved)))
+        self._dorovnaj_zalozky(zalozky_pred)
         self._bump_playlist_version()
         self.playlist_changed.emit()
         self._refresh_snapshot()
@@ -332,9 +344,11 @@ class PlayerController(QObject):
 
         was_playing = self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState
         removed_current = self.current_index in sorted_indices
+        zalozky_pred = self._zalozky_skladby()
 
         for index in reversed(sorted_indices):
             del self.playlist[index]
+        self._dorovnaj_zalozky(zalozky_pred)
 
         if not self.playlist:
             self.player.stop()
@@ -643,6 +657,7 @@ class PlayerController(QObject):
         if not self._spanok_pending:
             return
         zmenene = False
+        zalozky_pred = self._zalozky_skladby()
         for _ktory, tracks, return_index in reversed(self._spanok_pending):
             start = self._spanok_tail_index(tracks)
             if start < 0:
@@ -655,6 +670,7 @@ class PlayerController(QObject):
         self._spanok_pending.clear()
         if not zmenene:
             return
+        self._dorovnaj_zalozky(zalozky_pred)
         self.resume_position_ms = 0
         self.pending_seek_ms = None
         self._dispose_next_player()
@@ -677,6 +693,109 @@ class PlayerController(QObject):
             if self.playlist[start + offset].path.lower() != path.lower():
                 return -1
         return start
+
+    # ── zalozky ───────────────────────────────────────────────────────────────
+    def zalozka_index(self, zalozka: Zalozka) -> int:
+        """Kde v playliste zalozka prave je; -1, ked tam jej skladba uz nie je."""
+        return zalozky_modul.najdi([track.path for track in self.playlist], zalozka)
+
+    def zalozka_na_riadku(self, index: int) -> int:
+        """Poradie zalozky, ktora ukazuje na riadok `index`; -1, ked ziadna."""
+        paths = [track.path for track in self.playlist]
+        for poradie, zalozka in enumerate(self.zalozky):
+            if zalozky_modul.najdi(paths, zalozka) == index:
+                return poradie
+        return -1
+
+    def riadky_so_zalozkou(self) -> set[int]:
+        """Riadky playlistu, na ktore ukazuje nejaka zalozka (na oznacenie v zozname)."""
+        paths = [track.path for track in self.playlist]
+        return {i for z in self.zalozky if (i := zalozky_modul.najdi(paths, z)) >= 0}
+
+    def pridaj_zalozku(self, index: int) -> bool:
+        """Da zalozku na skladbu na riadku `index`. False, ked tam uz je."""
+        if not (0 <= index < len(self.playlist)):
+            return False
+        track = self.playlist[index]
+        if self.zalozka_na_riadku(index) >= 0:
+            self.message_emitted.emit(f"Záložka: {track.display_text} ju už má.")
+            return False
+        self.zalozky.append(Zalozka(track.path, index))
+        self.zalozky_changed.emit()
+        self.message_emitted.emit(f"Záložka pridaná: {index + 1}. {track.display_text}")
+        return True
+
+    def odober_zalozku(self, poradie: int) -> None:
+        if not (0 <= poradie < len(self.zalozky)):
+            return
+        del self.zalozky[poradie]
+        self.zalozky_changed.emit()
+
+    def hraj_zalozku(self, poradie: int) -> int:
+        """Pusti skladbu zalozky. Dalej sa hra normalne az do konca playlistu.
+
+        Zalozka sa tym nehybe — dalsie stlacenie zacne z toho isteho miesta.
+        Vracia index pustenej skladby, -1 ked sa nepustilo nic.
+        """
+        if not (0 <= poradie < len(self.zalozky)):
+            return -1
+        zalozka = self.zalozky[poradie]
+        index = self.zalozka_index(zalozka)
+        if index < 0:
+            self.message_emitted.emit(
+                f"Záložka: skladba {Path(zalozka.path).name} už v playliste nie je."
+            )
+            return -1
+        if index != zalozka.index:
+            zalozka.index = index
+            self.zalozky_changed.emit()
+        self.play_track_at(index)
+        hint = ""
+        if self.shutdown_when_playlist_ends:
+            hint = " Po dohratí playlistu sa PC vypne."
+        elif self.sleep_when_playlist_ends:
+            hint = " Po dohratí playlistu sa PC uspí."
+        self.message_emitted.emit(
+            f"Záložka: hrá od {index + 1}/{len(self.playlist)} – "
+            f"{self.playlist[index].display_text}." + hint
+        )
+        return index
+
+    def _zalozky_skladby(self) -> list[Track | None]:
+        """Na ktoru skladbu (objekt) ukazuje kazda zalozka. Vola sa PRED zmenou playlistu."""
+        if not self.zalozky:
+            return []
+        paths = [track.path for track in self.playlist]
+        skladby: list[Track | None] = []
+        for zalozka in self.zalozky:
+            index = zalozky_modul.najdi(paths, zalozka)
+            skladby.append(self.playlist[index] if index >= 0 else None)
+        return skladby
+
+    def _dorovnaj_zalozky(self, skladby_pred: list[Track | None]) -> None:
+        """Po zmene playlistu posunie pozicie zaloziek za ich skladbami.
+
+        Skladba sa hlada podla identity objektu, rovnako ako prave hrajuca
+        v `move_indices` — pri duplicitach by cesta mohla ukazat na iny vyskyt.
+        Ked skladba z playlistu zmizla, zalozka ostava: skladba sa moze vratit
+        (Nacitat M3U) a dovtedy ju menu ukaze ako chybajucu.
+        """
+        if not skladby_pred:
+            return
+        pozicie = {id(track): i for i, track in enumerate(self.playlist)}
+        paths: list[str] | None = None
+        zmena = False
+        for zalozka, skladba in zip(self.zalozky, skladby_pred):
+            novy = pozicie.get(id(skladba), -1) if skladba is not None else -1
+            if novy < 0:
+                if paths is None:
+                    paths = [track.path for track in self.playlist]
+                novy = zalozky_modul.najdi(paths, zalozka)
+            if novy >= 0 and novy != zalozka.index:
+                zalozka.index = novy
+                zmena = True
+        if zmena:
+            self.zalozky_changed.emit()
 
     def play_history_item(self, path: str) -> None:
         normalized_path = str(Path(path).expanduser().resolve())

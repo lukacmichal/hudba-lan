@@ -1,0 +1,33 @@
+{
+  "verzia": "1.0",
+  "tlacidla": [
+    {
+      "id": "mmp-predosla@lukacmichal",
+      "nazov": "Metal Music Player ⏮ predošlá",
+      "akcia": "prev",
+      "ikony": ["prev"],
+      "titul": "Predošlá skladba"
+    },
+    {
+      "id": "mmp-hraj@lukacmichal",
+      "nazov": "Metal Music Player ⏯ hrať / pauza",
+      "akcia": "playpause",
+      "ikony": ["play", "pause"],
+      "titul": "Hrať / pauza"
+    },
+    {
+      "id": "mmp-dalsia@lukacmichal",
+      "nazov": "Metal Music Player ⏭ ďalšia",
+      "akcia": "next",
+      "ikony": ["next"],
+      "titul": "Ďalšia skladba"
+    },
+    {
+      "id": "mmp-stlmit@lukacmichal",
+      "nazov": "Metal Music Player 🔇 stlmiť",
+      "akcia": "mute",
+      "ikony": ["zvuk", "ticho"],
+      "titul": "Stlmiť / vrátiť zvuk"
+    }
+  ]
+}

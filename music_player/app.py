@@ -23,6 +23,7 @@ from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication
 
 from music_player.metadata_server import NowPlayingServer
+from music_player.mys import DialkovaMys
 from music_player.beacon import UdpBeaconSender
 from music_player.persistence import StateStore
 from music_player.player_controller import PlayerController
@@ -92,6 +93,7 @@ def main() -> None:
         command_handler=command_bridge.command.emit,
         playlist_provider=controller.playlist_payload,
         stream_manager=stream_manager,
+        mouse=DialkovaMys(),
     )
     api_server.start()
     stream_manager.set_http_stream_url(api_server.stream_url)

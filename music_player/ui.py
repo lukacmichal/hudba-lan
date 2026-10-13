@@ -56,6 +56,16 @@ _C_BORDER = "#3d3025"
 
 _COMPACT_HEIGHT = 80     # height when playlist is hidden
 _ROLE_DURATION = Qt.ItemDataRole.UserRole + 1
+# True pri riadku, na ktory ukazuje zalozka — delegat pred nazov kresli 🔖.
+_ROLE_ZALOZKA = Qt.ItemDataRole.UserRole + 2
+
+_MENU_STYLE = (
+    "QMenu { background: #1e1a16; border: 1px solid #3d3025; }"
+    "QMenu::item { color: #f5ead1; padding: 4px 20px; }"
+    "QMenu::item:selected { background: #d4860a; color: #1e1a16; }"
+    "QMenu::item:disabled { color: #a08060; }"
+    "QMenu::separator { height: 1px; background: #3d3025; margin: 2px 6px; }"
+)
 
 
 class _ReorderablePlaylist(QListWidget):
@@ -209,6 +219,8 @@ class _PlaylistDelegate(QStyledItemDelegate):
         opt = QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
         title = opt.text
+        if index.data(_ROLE_ZALOZKA):
+            title = "🔖 " + title
         opt.text = ""
         style = opt.widget.style() if opt.widget else QApplication.style()
         style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
@@ -1379,6 +1391,13 @@ class MainWindow(QMainWindow):
             "Pravý klik = úprava zoznamu skladieb"
         )
         self.sleep2_button.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.zalozky_button = QPushButton("🔖 Záložky")
+        self.zalozky_button.setToolTip(
+            "Skladby, od ktorých sa dá jedným klikom začať hrať.\n"
+            "Vyber záložku a hrá sa od nej ďalej, kým to nezastavíš\n"
+            "alebo kým playlist nedohrá. Nič sa nepridáva, záložka ostáva.\n"
+            "Záložku dáš pravým klikom na skladbu v playliste."
+        )
         self.downloads_button = QPushButton("📦 Z Downloads")
         from music_player.downloads_import import target_dir
         self.downloads_button.setToolTip(
@@ -1405,7 +1424,7 @@ class MainWindow(QMainWindow):
         self.help_button = QPushButton("?")
         self.help_button.setToolTip("Nápoveda")
         self.help_button.setFixedWidth(28)
-        self._toolbar_buttons = [self.add_button, self.add_folder_button, self.remove_button, self.clear_button, self.save_m3u_button, self.load_m3u_button, self.goto_current_button, self.sleep_jump_button, self.sleep2_button, self.downloads_button, self.novinky_button, self.statistika_button, self.export_button, self.import_button, self.help_button]
+        self._toolbar_buttons = [self.add_button, self.add_folder_button, self.remove_button, self.clear_button, self.save_m3u_button, self.load_m3u_button, self.goto_current_button, self.sleep_jump_button, self.sleep2_button, self.zalozky_button, self.downloads_button, self.novinky_button, self.statistika_button, self.export_button, self.import_button, self.help_button]
         for b in self._toolbar_buttons:
             pl_bar.addWidget(b)
         pl_bar.addStretch(1)
@@ -1650,6 +1669,8 @@ class MainWindow(QMainWindow):
         self.sleep2_button.customContextMenuRequested.connect(
             lambda _pos: self._edit_spanok_list(SPANOK2)
         )
+        self.zalozky_button.clicked.connect(self._ukaz_zalozky)
+        self.controller.zalozky_changed.connect(self._oznac_zalozky)
         self.downloads_button.clicked.connect(self._import_from_downloads)
         self.novinky_button.clicked.connect(lambda: self._nacitaj_novinky(hlasne=True))
         self.statistika_button.clicked.connect(self._ukaz_statistiku)
@@ -1777,10 +1798,11 @@ class MainWindow(QMainWindow):
 <li>Zoznam upravíš <b>pravým klikom na tlačidlo</b>, alebo pravým klikom na skladbu v playliste → <b>Pridať do „Spánok“ / „Spánok 2“</b>. Ukladajú sa do <b>spanok.m3u</b> a <b>spanok2.m3u</b> vedľa <b>config.txt</b>, takže sa dajú editovať aj rukou v poznámkovom bloku; koľko skladieb je v zozname, toľko sa prehrá. Inú cestu nastavíš cez <b>SPANOK_PLAYLIST</b> / <b>SPANOK2_PLAYLIST</b> v <b>config.txt</b>.</li>
 <li>Pridané skladby sa pri <b>ukončení prehrávača</b> z playlistu zase vyhodia — ostane presne to, čo tam bolo predtým. Uspanie ani vypnutie PC ukončenie nie je, po zobudení sú stále tam. Zmeníš to prepínačom <b>Nechať skladby v playliste aj po ukončení prehrávača</b> v dialógu zoznamu (v <b>config.txt</b> riadok <b>SPANOK_NECHAT_V_PLAYLISTE</b> / <b>SPANOK2_NECHAT_V_PLAYLISTE</b> = ano / nie).</li>
 <li>Keď je <b>spanok.m3u</b> prázdny, tlačidlo <b>Spánok</b> sa správa po starom: preskočí na tretiu skladbu od konca playlistu.</li>
+<li><b>🔖 Záložky</b> — skladby, od ktorých sa dá jedným klikom začať hrať. Klik na tlačidlo ukáže zoznam záložiek v poradí playlistu; vybraná skladba sa pustí a hrá sa od nej ďalej, kým to nezastavíš alebo kým playlist nedohrá (vtedy platí <b>Vypnúť PC po skončení</b> / <b>Spať po skončení</b> ako vždy). Na rozdiel od Spánku sa do playlistu <b>nič nepridáva</b> a záložka po prehratí ostáva, kde bola. Záložku dáš pravým klikom na skladbu → <b>🔖 Pridať záložku</b> alebo v menu tlačidla (vezme označenú skladbu); v playliste ju spoznáš podľa 🔖 pred názvom. Záložka ide so skladbou, keď ju v playliste presunieš; keď skladbu z playlistu odstrániš, záložka ostane a v menu sa ukáže ako chýbajúca. Záložky sú pre každý notebook vlastné, ako playlist.</li>
 <li><b>📦 Z Downloads</b> — nájde v priečinku Downloads všetky rar/zip/7z archívy, ktoré obsahujú hudbu, rozbalí ich do <b>{target_dir()}</b> (rok sa mení sám, každý album do vlastného podpriečinka) a ten priečinok otvorí. Priečinok albumu sa pomenuje <b>Interpret - Album - Rok</b> — názvy typu <i>Dark Plague`2026`Masquerade by necroscum</i> sa upracú samy. Keď sa z názvu nedá vyčítať, kde končí kapela a začína album, prehrávač sa opýta zoznamu noviniek a potom <b>Metal Archives</b> — odtiaľ berie aj správny zápis (<i>Behemoth - I, Scvlptor</i>, <i>Boötes Void</i>). Keď sa zhoda nenájde, názov sa nechá tak, ako prišiel; netipuje sa. Vypína sa <b>NAZVY_MA=nie</b> v <b>config.txt</b>. Na záver vypíše prehľad — ktoré albumy pribudli a s koľkými skladbami, ktoré sa preskočili, lebo tam už boli, a ktoré sa nepodarilo rozbaliť. Archívy v Downloads nechá tak. Cieľ zmeníš cez <b>MP3_TARGET</b> v <b>config.txt</b></li>
 <li><b>🆕 Novinky</b> — nové metalové albumy zo skenu <b>metal-novinky</b>. Číslo v tlačidle je počet tých, ktoré si ešte neodškrtol. Okno má dve záložky: <b>Tento týždeň</b> (čo vychádza od pondelka do nedele, aj keď to sken našiel o týždeň skôr) a <b>Už vydané</b> (albumy, ktoré na Metal Archives pribudli až po svojom vydaní — inak by ti ušli). V oboch sú albumy zoradené podľa dňa vydania a v rámci dňa podľa abecedy. Pri každom je štýl, dátum vydania a odkazy na <b>YouTube</b>, <b>Bandcamp</b> a <b>Metal Archives</b> (dvojklik na riadok otvorí YouTube). Tlačidlom <b>✓ Skontrolované</b> album zo zoznamu zmizne — ale nezmaže sa: zaškrtávadlo <b>Zobraziť aj skontrolované</b> ho vráti a dá sa vrátiť aj medzi nové. Odškrtnutie sa ukladá na NAS, takže platí na oboch notebookoch. Pod čiarou sú albumy, s ktorými si filter žánrov nevedel rady — tie ešte treba posúdiť ručne. Keď album stiahneš a rozbalíš cez <b>📦 Z Downloads</b>, odškrtne sa sám. Vypína sa cez <b>NOVINKY=nie</b> v <b>config.txt</b></li>
 <li><b>Ctrl+F</b> — vyhľadávanie v playliste, Enter = ďalší výskyt, Escape = zatvoriť</li>
-<li><b>Pravý klik</b> — kontextové menu (metadáta, pridať do „Spánok 2“, odstrániť)</li>
+<li><b>Pravý klik</b> — kontextové menu (metadáta, záložka, pridať do „Spánok“ / „Spánok 2“, odstrániť)</li>
 </ul>
 
 <h3 style="color: #d4860a;">Metadáta a Metal Archives</h3>
@@ -2552,10 +2574,13 @@ kontrola aktualizácií.</li>
         self.playlist_widget.setUpdatesEnabled(False)
         self.playlist_widget.clear()
         missing_durations = []
+        so_zalozkou = self.controller.riadky_so_zalozkou()
         for i, track in enumerate(self.controller.playlist):
             item = QListWidgetItem(track.display_text)
             item.setData(Qt.ItemDataRole.UserRole, track.path)
             item.setData(_ROLE_DURATION, track.duration_display)
+            if i in so_zalozkou:
+                item.setData(_ROLE_ZALOZKA, True)
             tooltip = f"{track.artist} – {track.title}" if track.artist else track.title
             if track.album:
                 tooltip += f"\n{track.album}"
@@ -2575,6 +2600,15 @@ kontrola aktualizácií.</li>
                 args=(missing_durations,),
                 daemon=True,
             ).start()
+
+    def _oznac_zalozky(self) -> None:
+        """Prekresli 🔖 v playliste bez skladania celeho zoznamu nanovo."""
+        so_zalozkou = self.controller.riadky_so_zalozkou()
+        for i in range(self.playlist_widget.count()):
+            item = self.playlist_widget.item(i)
+            chcem = i in so_zalozkou
+            if bool(item.data(_ROLE_ZALOZKA)) != chcem:
+                item.setData(_ROLE_ZALOZKA, chcem)
 
     def _fill_missing_durations(self, indices: list[int]) -> None:
         from music_player.models import _read_duration_ms
@@ -3022,12 +3056,22 @@ kontrola aktualizácií.</li>
             "QMenu::item:selected { background: #d4860a; color: #1e1a16; }"
         )
         metadata_action = menu.addAction("Zobraziť metadáta")
+        zalozka = self.controller.zalozka_na_riadku(row)
+        if zalozka >= 0:
+            zalozka_action = menu.addAction("🔖 Odstrániť záložku")
+        else:
+            zalozka_action = menu.addAction("🔖 Pridať záložku")
         spanok_action = menu.addAction("Pridať do „Spánok“")
         sleep2_action = menu.addAction("Pridať do „Spánok 2“")
         remove_action = menu.addAction("Odstrániť")
         chosen = menu.exec(self.playlist_widget.mapToGlobal(pos))
         if chosen == metadata_action:
             self._show_track_metadata(row)
+        elif chosen == zalozka_action:
+            if zalozka >= 0:
+                self._odober_zalozku(zalozka)
+            else:
+                self._pridaj_zalozku(row)
         elif chosen == spanok_action:
             self._add_selection_to_spanok(SPANOK)
         elif chosen == sleep2_action:
@@ -3229,6 +3273,86 @@ kontrola aktualizácií.</li>
         else:
             self._show_message(f"{meno}: vybrané skladby už v zozname sú.")
 
+    # ── Záložky ────────────────────────────────────────────────────────────────
+    def _ukaz_zalozky(self) -> None:
+        """Menu pod tlacidlom: zalozky v poradi playlistu, pridanie a odobratie."""
+        playlist = self.controller.playlist
+        # V poradi playlistu, chybajuce na koniec — menu sa cita zhora ako playlist.
+        polozky = sorted(
+            (
+                (self.controller.zalozka_index(zalozka), poradie, zalozka)
+                for poradie, zalozka in enumerate(self.controller.zalozky)
+            ),
+            key=lambda polozka: (polozka[0] < 0, polozka[0]),
+        )
+
+        def popis(index: int, zalozka) -> str:
+            if index < 0:
+                return _skrat(Path(zalozka.path).stem, 60) + " — už nie je v playliste"
+            return f"{index + 1}. " + _skrat(playlist[index].display_text, 70)
+
+        menu = QMenu(self)
+        menu.setStyleSheet(_MENU_STYLE)
+        if not polozky:
+            menu.addAction("Zatiaľ žiadne záložky").setEnabled(False)
+        for index, poradie, zalozka in polozky:
+            akcia = menu.addAction(popis(index, zalozka))
+            if index < 0:
+                akcia.setEnabled(False)
+            else:
+                akcia.triggered.connect(lambda _=False, p=poradie: self._hraj_zalozku(p))
+
+        menu.addSeparator()
+        riadok = self._riadok_pre_zalozku()
+        if riadok < 0:
+            menu.addAction("Záložku dáš pravým klikom na skladbu v playliste").setEnabled(False)
+        elif self.controller.zalozka_na_riadku(riadok) >= 0:
+            menu.addAction(
+                f"Označená skladba {riadok + 1}. už záložku má"
+            ).setEnabled(False)
+        else:
+            pridat = menu.addAction(
+                f"Pridať záložku: {riadok + 1}. " + _skrat(playlist[riadok].display_text, 60)
+            )
+            pridat.triggered.connect(lambda _=False, r=riadok: self._pridaj_zalozku(r))
+        if polozky:
+            odobrat = menu.addMenu("Odstrániť záložku")
+            odobrat.setStyleSheet(_MENU_STYLE)
+            for index, poradie, zalozka in polozky:
+                odobrat.addAction(popis(index, zalozka)).triggered.connect(
+                    lambda _=False, p=poradie: self._odober_zalozku(p)
+                )
+        menu.exec(self.zalozky_button.mapToGlobal(QPoint(0, self.zalozky_button.height())))
+
+    def _riadok_pre_zalozku(self) -> int:
+        """Skladba, na ktoru by sa dala zalozka z menu: oznacena, inak prave hrajuca."""
+        riadky = sorted({index.row() for index in self.playlist_widget.selectedIndexes()})
+        if riadky and riadky[0] < len(self.controller.playlist):
+            return riadky[0]
+        if 0 <= self.controller.current_index < len(self.controller.playlist):
+            return self.controller.current_index
+        return -1
+
+    def _hraj_zalozku(self, poradie: int) -> None:
+        index = self.controller.hraj_zalozku(poradie)
+        if 0 <= index < self.playlist_widget.count():
+            self.playlist_widget.setCurrentRow(index)
+            self.playlist_widget.scrollToItem(self.playlist_widget.item(index))
+
+    def _pridaj_zalozku(self, riadok: int) -> None:
+        # Uklada sa hned: zalozka je zamerny krok a vecer po nom casto ide
+        # "Vypnut PC po skonceni", kde sa na ulozenie pri zatvarani spoliehat neda.
+        if self.controller.pridaj_zalozku(riadok):
+            self.save_state()
+
+    def _odober_zalozku(self, poradie: int) -> None:
+        if not (0 <= poradie < len(self.controller.zalozky)):
+            return
+        meno = Path(self.controller.zalozky[poradie].path).stem
+        self.controller.odober_zalozku(poradie)
+        self.save_state()
+        self._show_message(f"Záložka odstránená: {meno}")
+
     # ── settings ───────────────────────────────────────────────────────────────
     def _toggle_autostart(self, checked: bool) -> None:
         try:
@@ -3428,3 +3552,10 @@ def _format_ms(value: int) -> str:
     if hours:
         return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
     return f"{minutes:02d}:{seconds:02d}"
+
+
+def _skrat(text: str, dlzka: int) -> str:
+    """Skrati text do menu, aby nazov albumu nenafukol menu cez celu obrazovku."""
+    if len(text) <= dlzka:
+        return text
+    return text[: dlzka - 1].rstrip() + "…"

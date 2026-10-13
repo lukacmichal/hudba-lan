@@ -12,7 +12,13 @@ from typing import TYPE_CHECKING, Callable
 from music_player import __version__, __version_code__
 
 if TYPE_CHECKING:
+    from music_player.mys import DialkovaMys
     from music_player.streaming import FfmpegStreamManager
+
+# Spojenie touchpadu, ktorym nic nepride, sa po tomto case zavrie. Telefon
+# svoje necinne spojenie zavrie skor (60 s) a pri dalsom dotyku otvori nove —
+# takze server nikdy nezavrie spojenie, do ktoreho telefon prave pise.
+_MOUSE_IDLE_TIMEOUT_S = 180
 
 
 _ALLOWED_ACTIONS = {
@@ -29,11 +35,13 @@ class NowPlayingServer:
         playlist_provider: "Callable[[], dict] | None" = None,
         stream_manager: "FfmpegStreamManager | None" = None,
         preferred_port: int = 8765,
+        mouse: "DialkovaMys | None" = None,
     ) -> None:
         self._payload_provider = payload_provider
         self._command_handler = command_handler
         self._playlist_provider = playlist_provider
         self._stream_manager = stream_manager
+        self._mouse = mouse
         self._preferred_port = preferred_port
         self._server: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
@@ -59,6 +67,7 @@ class NowPlayingServer:
             self._stream_manager,
             self._command_handler,
             self._playlist_provider,
+            self._mouse,
         )
         try:
             self._server = _LowLatencyHTTPServer((self.host, self._preferred_port), handler)
@@ -82,6 +91,7 @@ class NowPlayingServer:
         stream_manager: "FfmpegStreamManager | None",
         command_handler: "Callable[[str, dict], None] | None" = None,
         playlist_provider: "Callable[[], dict] | None" = None,
+        mouse: "DialkovaMys | None" = None,
     ):
         class Handler(BaseHTTPRequestHandler):
             def setup(self):
@@ -130,6 +140,9 @@ class NowPlayingServer:
                 self._send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
             def do_POST(self) -> None:
+                if self.path == "/api/mouse" and mouse is not None:
+                    self._handle_mouse(mouse)
+                    return
                 if self.path != "/api/control" or command_handler is None:
                     self._send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
                     return
@@ -164,6 +177,32 @@ class NowPlayingServer:
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)
+
+            def _handle_mouse(self, mys: "DialkovaMys") -> None:
+                """Trvale spojenie touchpadu: po hlavickach riadky az do EOF.
+
+                Telo nema Content-Length — telefon pise, kym ma co. Odpoved
+                (200 + "ok") ide hned, aby telefon vedel, ze PC touchpad pozna;
+                starsia verzia by vratila 404.
+                """
+                self.close_connection = True
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Connection", "close")
+                self.end_headers()
+                self.wfile.write(b"ok\n")
+                self.wfile.flush()
+                self.connection.settimeout(_MOUSE_IDLE_TIMEOUT_S)
+                try:
+                    while True:
+                        riadok = self.rfile.readline(8192)
+                        if not riadok:
+                            break
+                        mys.vykonaj(riadok.decode("utf-8", "replace").rstrip("\r\n"))
+                except (OSError, ValueError):
+                    pass
+                finally:
+                    mys.uvolni()
 
             @staticmethod
             def _handle_stream(

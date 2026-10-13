@@ -29,6 +29,9 @@
   hlasitosti SKRYJE (OvladacWidgetProvider.prekresli) — inak by ho
   LinearLayout vtlacil na ukor prehravania, ktore ma vahu a ustupilo by prve.
 
+  Touchpad (23. 9. 2026) je tiez ZLAVA, s vacsou medzerou za sebou: skratka
+  do appky nie je prikaz pre PC a nema splyvat so styrmi uspavacimi.
+
   "Spanok" (31. 8. 2026) pribudol ZLAVA, nie na koniec radu. Skupina je totiz
   zarovnana doprava — nazov skladby berie zvysok sirky — takze tlacidlo pridane
   zlava necha ostatne tri presne tam, kde boli. Pridane sprava by ich vsetky
@@ -94,6 +97,18 @@
                 android:textColor="@color/metal_text_secondary"
                 android:textSize="13sp" />
         </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/w_touchpad"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/widget_tlacidlo_bg"
+            android:contentDescription="@string/w_touchpad"
+            android:scaleType="fitCenter"
+            android:padding="6dp"
+            android:src="@drawable/ic_mys" />
 
         <ImageButton
             android:id="@+id/w_spanok"

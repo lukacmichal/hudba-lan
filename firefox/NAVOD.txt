@@ -1,0 +1,66 @@
+METAL MUSIC PLAYER – OVLÁDANIE Z FIREFOXU
+==========================================
+
+ČO TO JE
+--------
+• Hlavné rozšírenie (ikona s pentagramom) – po kliknutí okienko s celým
+  ovládaním: čo hrá, posun v skladbe, hlasitosť, Spánok, playlist
+  s hľadaním. Beží na pozadí a drží prehrávač nájdený – BEZ NEHO
+  TLAČIDLÁ NEFUNGUJÚ.
+• 4 tlačidlá do lišty:  ⏮ predošlá  ⏯ hrať/pauza  ⏭ ďalšia  🔇 stlmiť/vrátiť
+  – klik urobí akciu hneď, bez okienka
+  – keď na tlačidlo nabehneš myšou: interpret, skladba a čas
+  – sivé tlačidlo = prehrávač nebeží alebo notebook spí
+
+Prečo 5 súborov: Firefox dá jednému rozšíreniu len jedno tlačidlo a každé
+rozšírenie chce vlastné potvrdenie „Pridať“. Do jedného inštalátora sa to
+zabaliť nedá.
+
+Rozšírenia sú podpísané u Mozilly v režime „unlisted“ – nie sú v katalógu
+doplnkov, nikto iný ich nenájde.
+
+
+INŠTALÁCIA (raz na každom notebooku)
+------------------------------------
+1. Vo Firefoxe Ctrl+O a otvor tento priečinok:
+      \\nas.local\Android\PlayerPC\firefox
+2. NAJPRV  metalmusic-firefox-<verzia>.xpi  → Pridať
+   (keď je ich tu viac, ber najvyššiu verziu)
+3. Potom po jednom štyri  mmp-tlacidlo-....xpi  → zakaždým Pridať
+4. Tlačidlá sa postavia do lišty samy.
+
+
+PRESUN TLAČIDIEL / ZÚŽENIE VYHĽADÁVANIA
+---------------------------------------
+• Pravý klik na prázdne miesto v lište → „Prispôsobiť panel nástrojov…“
+  (alebo ☰ vpravo hore → Ďalšie nástroje → Prispôsobiť panel nástrojov…,
+  alebo do adresného riadka napíš  about:customizing  a Enter)
+• Firefox vtedy celý zmení vzhľad – to je v poriadku, je to režim úprav.
+• Tlačidlá potiahni, kam chceš. Vyhľadávacie pole zúžiš ťahaním za jeho
+  ľavý okraj.
+• Von: „Hotovo“ vpravo dole.
+• NEKLIKAŤ „Obnoviť predvolené“ – zmizne celé rozloženie.
+• Keď sa zmenia farby/vzhľad Firefoxu aj potom (téma):
+  ☰ → Doplnky a témy → Témy → vybrať pôvodnú.
+
+
+KEĎ TO NEJDE
+------------
+• Tlačidlá sú sivé → beží prehrávač? Nespí notebook? (zobudiť z telefónu
+  appkou WakeNB)
+• Prehrávač sa hľadá na 127.0.0.1, 192.168.1.50 a 192.168.1.51. Iná adresa:
+  klik na pentagram → ⚙ → dopísať → Uložiť.
+• Keď beží prehrávač na oboch notebookoch, ovláda sa ten, kde hrá hudba.
+  Prepnúť sa dá v okienku pod pentagramom (dve adresy pod hlavičkou).
+• Tlačidlá vôbec nereagujú → je hlavné rozšírenie (pentagram) nainštalované
+  a zapnuté? ☰ → Doplnky a témy → Rozšírenia.
+
+
+NOVÁ VERZIA
+-----------
+• Inštaluje sa rovnako (Ctrl+O → Pridať), starú prepíše. Sama sa
+  neaktualizuje.
+• Vydáva sa na notebooku s C:\NAS:
+      C:\NAS\hudba-lan\firefox\zabal.ps1 -Podpisat
+  Kľúče k Mozille sú v C:\NAS\amo-credentials.local. Podpis trvá asi
+  5 minút na každé rozšírenie. Podrobnosti v C:\NAS\hudba-lan\firefox\README.md.

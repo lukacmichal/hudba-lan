@@ -1,0 +1,106 @@
+/* Farby su tie iste ako v prehravaci (music_player/ui.py), aby okienko
+   vyzeralo ako jeho kus a nie ako cudzi doplnok. */
+:root {
+  --pozadie: #1e1a16;
+  --plocha: #2b2520;
+  --okraj: #3d3025;
+  --text: #f5ead1;
+  --text-2: #a08060;
+  --akcent: #d4860a;
+  --akcent-2: #f0b44c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  width: 380px;
+  padding: 10px 12px 12px;
+  background: var(--pozadie);
+  color: var(--text);
+  font: 13px/1.35 "Segoe UI", system-ui, sans-serif;
+}
+
+[hidden] { display: none !important; }
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--plocha);
+  border: 1px solid var(--okraj);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--akcent); }
+button:active { background: var(--okraj); }
+button.ikona { padding: 2px 7px; background: transparent; border-color: transparent; }
+button.ikona:hover { border-color: var(--okraj); }
+button.potvrd { background: var(--akcent); color: var(--pozadie); border-color: var(--akcent); }
+
+input[type="search"], textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--plocha);
+  border: 1px solid var(--okraj);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+input[type="search"]:focus, textarea:focus { outline: none; border-color: var(--akcent); }
+
+header { display: flex; align-items: center; gap: 8px; }
+.stav { flex: 1; min-width: 0; color: var(--text-2); font-size: 12px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stav .bodka { color: var(--akcent); }
+
+.hostia { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.hostia button { font-size: 11px; padding: 1px 8px; border-radius: 10px; }
+.hostia button.vybrany { border-color: var(--akcent); color: var(--akcent-2); }
+
+.titul { margin-top: 10px; font-size: 15px; font-weight: 600;
+         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.interpret { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.pas { margin-top: 10px; height: 6px; background: var(--okraj); border-radius: 3px;
+       cursor: pointer; position: relative; }
+.pas:hover { height: 8px; margin-bottom: -2px; }
+.pas-plny { height: 100%; width: 0; background: var(--akcent); border-radius: 3px; }
+.casy { display: flex; justify-content: space-between; margin-top: 3px;
+        color: var(--text-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+.ovladanie { display: flex; justify-content: center; gap: 8px; margin-top: 8px; }
+.ovladanie button { width: 44px; height: 34px; font-size: 16px; padding: 0; }
+.ovladanie button.hlavne { width: 56px; background: var(--akcent); color: var(--pozadie);
+                           border-color: var(--akcent); }
+
+.hlasitost { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.hlasitost input { flex: 1; accent-color: var(--akcent); }
+.cislo { width: 28px; text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+.spanky { display: flex; gap: 8px; margin-top: 8px; }
+.spanky button { flex: 1; }
+
+.playlist-hlava { display: flex; gap: 6px; margin-top: 10px; }
+.playlist-hlava input { flex: 1; min-width: 0; }
+
+.playlist { list-style: none; margin: 6px 0 0; padding: 0; max-height: 230px; overflow-y: auto;
+            border: 1px solid var(--okraj); border-radius: 6px; }
+.playlist li { display: flex; gap: 6px; padding: 3px 8px; cursor: pointer; white-space: nowrap; }
+.playlist li:hover { background: var(--plocha); }
+.playlist li.hra { background: var(--akcent); color: var(--pozadie); }
+.playlist li.hra .dlzka, .playlist li.hra .cislo-riadku { color: var(--pozadie); }
+.playlist .cislo-riadku { color: var(--text-2); min-width: 34px; text-align: right;
+                          font-variant-numeric: tabular-nums; }
+.playlist .nazov { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.playlist .dlzka { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.pocet { margin-top: 3px; color: var(--text-2); font-size: 11px; }
+
+.nedostupny p { color: var(--text-2); margin: 12px 0 8px; }
+
+body.nastavenia-otvorene #prehravac,
+body.nastavenia-otvorene #nedostupny { display: none !important; }
+
+.nastavenia { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.nastavenia label { color: var(--text-2); font-size: 12px; }
+.nastavenia .riadok { display: flex; gap: 8px; }
+.sprava { margin: 0; color: var(--akcent-2); font-size: 12px; min-height: 1em; }

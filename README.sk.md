@@ -48,6 +48,15 @@ Aktualne obsahuje:
 - zoznamy sa edituju pravym klikom na tlacidlo, alebo pravym klikom na skladbu
   v playliste; cesty k nim prepisu `SPANOK_PLAYLIST` / `SPANOK2_PLAYLIST`
 - obe sa daju spustit aj z telefonu — API akcie `spanok` a `sleep2`
+- tlacidlo `Zalozky` — skladby, od ktorych sa da jednym klikom zacat hrat.
+  Vyber zalozku a hra sa od nej dalej, kym hudbu nezastavis alebo playlist
+  nedohra (vtedy plati vypnutie/uspanie po skonceni). Na rozdiel od `Spanok`
+  sa do playlistu nic neprida a zalozka po prehrati ostava, kde bola.
+  Pridava sa pravym klikom na skladbu (`Pridat zalozku`) alebo v menu
+  tlacidla, v playliste ju oznacuje 🔖. Ide so skladbou pri presuvani;
+  odstranena skladba ju nezmaze, len sa v menu ukaze ako chybajuca.
+  Uklada sa do `state.json` k playlistu, takze kazdy notebook ma svoje
+  (`music_player/zalozky.py`)
 - widget na ploche telefonu ma vpravo hore vsetky styri uspavacie tlacidla:
   `Spanok` / uspat PC / `Spanok 2` / vypnut PC —
   kazde cez potvrdzovaciu otazku
@@ -57,6 +66,13 @@ Aktualne obsahuje:
   `RemoteViews` SeekBar nepoznaju a tahanie berie launcher sebe
 - pripraveny prepinac pre `vypnut PC po poslednej skladbe`
 - lokalne `now playing` API na `http://<ip>:8765/api/now-playing`
+- rozsirenie pre Firefox (`firefox/`) — ikonka v liste: co hra, play/pauza,
+  posun, hlasitost, Spanok a playlist s hladanim; cez to iste API na porte 8765,
+  prehravac si najde sam na 127.0.0.1 / 88.3 / 88.6. Instalacia a podpis
+  v `firefox/README.md`
+- telefon ako touchpad: ikonka mysi v appke ovlada kurzor, kliky, koliesko
+  a klavesnicu tohto PC cez `POST /api/mouse` (trvale spojenie, protokol
+  v `music_player/mys.py`); bez hesla, len domaca siet
 
 Zatial neobsahuje:
 

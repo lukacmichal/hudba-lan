@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from music_player.models import Track
+from music_player.zalozky import Zalozka
 
 APP_NAME = "LanMusicPlayer"
 STATE_FILE_NAME = "state.json"
@@ -33,6 +34,7 @@ class AppState:
     total_listen_ms: int = 0
     scheduled_action: str = "none"
     scheduled_time: str = ""
+    zalozky: list[Zalozka] = field(default_factory=list)
 
 
 class StateStore:
@@ -89,6 +91,7 @@ class StateStore:
             total_listen_ms=max(int(payload.get("total_listen_ms", 0)), 0),
             scheduled_action=str(payload.get("scheduled_action", "none")),
             scheduled_time=str(payload.get("scheduled_time", "")),
+            zalozky=_deserialize_zalozky(payload.get("zalozky", [])),
         )
 
     def save(self, state: AppState) -> None:
@@ -112,6 +115,7 @@ class StateStore:
             "total_listen_ms": max(int(state.total_listen_ms), 0),
             "scheduled_action": state.scheduled_action,
             "scheduled_time": state.scheduled_time,
+            "zalozky": [zalozka.to_dict() for zalozka in state.zalozky],
         }
         temp_file = self._state_file.with_suffix(".tmp")
         temp_file.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
@@ -134,6 +138,18 @@ def _deserialize_tracks(items: list[dict]) -> list[Track]:
             continue
         tracks.append(track)
     return tracks
+
+
+def _deserialize_zalozky(items) -> list[Zalozka]:
+    if not isinstance(items, list):
+        return []
+    zalozky: list[Zalozka] = []
+    for item in items:
+        try:
+            zalozky.append(Zalozka.from_dict(item))
+        except (AttributeError, TypeError, ValueError):
+            continue
+    return zalozky
 
 
 def _clamp_int(value: int, minimum: int, maximum: int, fallback: int) -> int:
