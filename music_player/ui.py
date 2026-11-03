@@ -20,6 +20,9 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QTabWidget,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
     QListWidgetItem,
     QMainWindow,
     QMenu,
@@ -655,6 +658,393 @@ class _SpanokDialog(QDialog):
         self._count_label.setText(f"Skladieb v zozname: {self._list.count()}")
 
 
+class _DownloadsDialog(QDialog):
+    """Nahlad rozbalovania z Downloads — co sa rozbali, kam a ako sa to bude volat.
+
+    Navrh nazvu (`downloads_import.nacitaj`) obcas netrafi: kapela s pomlckou
+    v mene, album bez oddelovaca, rok v nazve albumu. Preto sa tu kazdy riadok
+    da prepisat skor, nez sa cokolvek rozbali, a priecinok sa potom vola presne
+    tak, ako ukazuje stlpec Priecinok. V tom istom okne sa archivy daju aj
+    zmazat (do Kosa) — v Downloads sa inak hromadia a nacitanie zdrzuju.
+    """
+
+    (ROZBALIT, SKUPINA, ALBUM, ROK, PRIECINOK, SKLADIEB, STAV,
+     ZMAZAT, ARCHIV, VELKOST) = range(10)
+    _HLAVICKA = ("Rozbaliť", "Skupina", "Album", "Rok", "Priečinok", "Skladieb", "Stav",
+                 "Zmazať", "Archív", "Veľkosť")
+
+    _ZELENA = "#7bbf6a"
+    _ZLTA = "#d4a017"
+    _HNEDA = "#a89070"
+    _CERVENA = "#d46a6a"
+
+    def __init__(self, parent, nacitanie) -> None:
+        super().__init__(parent)
+        self._target = nacitanie.target
+        self._navrhy = nacitanie.navrhy
+        #: Riadok -> priecinok, pod ktorym uz album v cieli lezi (alebo None).
+        self._hotove: dict[int, Path | None] = {}
+        self._plnim = False
+
+        self.setWindowTitle(f"Z Downloads — {len(self._navrhy)} archívov")
+        self.setMinimumSize(1000, 480)
+        self.resize(1400, 640)
+        self.setStyleSheet(
+            "QDialog { background: #1e1a16; }"
+            "QLabel { color: #f5ead1; }"
+            "QTableWidget { background: #2a2520; color: #f5ead1; border: 1px solid #3d3025;"
+            " gridline-color: #3d3025; }"
+            "QTableWidget::item:selected { background: #5a4630; }"
+            # Predvolene zaskrtavadlo je na tmavom pozadi takmer neviditelne.
+            "QTableWidget::indicator { width: 13px; height: 13px; border: 1px solid #a08060;"
+            " background: #1e1a16; }"
+            "QTableWidget::indicator:checked { border-color: #d4860a; background: #d4860a; }"
+            "QTableWidget::indicator:disabled { border-color: #3d3025; background: #2a2520; }"
+            "QTableWidget QLineEdit { background: #1e1a16; color: #f5ead1;"
+            " border: 1px solid #d4860a; }"
+            "QHeaderView::section { background: #2b2520; color: #c9b48f;"
+            " border: 1px solid #3d3025; padding: 3px 6px; }"
+            "QPushButton { background: #2b2520; color: #f5ead1; border: 1px solid #3d3025;"
+            " padding: 4px 10px; }"
+            "QPushButton:hover { border-color: #d4860a; }"
+            "QPushButton:disabled { color: #6b5c4a; border-color: #2b2520; }"
+        )
+
+        layout = QVBoxLayout(self)
+        bez_hudby = len(nacitanie.bez_hudby)
+        info = QLabel(
+            f"Rozbaľuje sa do <b>{html_escape(str(self._target))}</b> — každý album do "
+            "vlastného priečinka, ktorý sa bude volať tak, ako ukazuje stĺpec "
+            "<b>Priečinok</b>. <b>Skupinu, album a rok</b> prepíšeš dvojklikom (alebo F2). "
+            "<b>Zmazať</b> presunie archív do Koša — po rozbalení, alebo hneď, keď "
+            "Rozbaliť nie je zaškrtnuté. Klik na hlavičku Rozbaliť / Zmazať prepne "
+            "celý stĺpec."
+            + (f"<br><span style='color: #a08060;'>Archívy bez hudby nechávam tak "
+               f"({bez_hudby}).</span>" if bez_hudby else "")
+        )
+        info.setTextFormat(Qt.TextFormat.RichText)
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        self._tabulka = QTableWidget(0, len(self._HLAVICKA))
+        self._tabulka.setHorizontalHeaderLabels(self._HLAVICKA)
+        self._tabulka.verticalHeader().setVisible(False)
+        self._tabulka.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self._tabulka.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self._tabulka.setEditTriggers(
+            QAbstractItemView.EditTrigger.DoubleClicked
+            | QAbstractItemView.EditTrigger.EditKeyPressed
+            | QAbstractItemView.EditTrigger.AnyKeyPressed
+        )
+        self._tabulka.setWordWrap(False)
+        hlavicka = self._tabulka.horizontalHeader()
+        for stlpec in (self.ROZBALIT, self.ROK, self.SKLADIEB, self.ZMAZAT, self.VELKOST):
+            hlavicka.setSectionResizeMode(stlpec, QHeaderView.ResizeMode.ResizeToContents)
+        hlavicka.setSectionResizeMode(self.PRIECINOK, QHeaderView.ResizeMode.Stretch)
+        for stlpec, sirka in ((self.SKUPINA, 170), (self.ALBUM, 230), (self.STAV, 230),
+                              (self.ARCHIV, 230)):
+            self._tabulka.setColumnWidth(stlpec, sirka)
+        hlavicka.sectionClicked.connect(self._prepni_stlpec)
+        layout.addWidget(self._tabulka, 1)
+
+        row = QHBoxLayout()
+        self._vsetky_button = QPushButton()
+        self._vsetky_button.setToolTip(
+            "Zaškrtne Rozbaliť pri všetkých nových albumoch naraz.\n"
+            "Keď sú už zaškrtnuté všetky, odškrtne ich.")
+        row.addWidget(self._vsetky_button)
+        hotove_button = QPushButton("🗑 Zmazať už rozbalené")
+        hotove_button.setToolTip(
+            "Zaškrtne Zmazať pri archívoch, ktorých album už v cieli je —\n"
+            "práve tie sa v Downloads hromadia a zdržujú načítanie.")
+        vymen_button = QPushButton("⇄ Prehodiť skupinu a album")
+        navrh_button = QPushButton("↺ Vrátiť návrh")
+        navrh_button.setToolTip("Označeným riadkom vráti názov, ktorý navrhol prehrávač.")
+        povodny_button = QPushButton("Pôvodný názov")
+        povodny_button.setToolTip("Označeným riadkom dá názov presne tak, ako je v archíve.")
+        downloads_button = QPushButton("📂 Downloads")
+        for widget in (hotove_button, vymen_button, navrh_button, povodny_button):
+            row.addWidget(widget)
+        row.addStretch(1)
+        row.addWidget(downloads_button)
+        layout.addLayout(row)
+
+        self._suhrn = QLabel()
+        self._suhrn.setTextFormat(Qt.TextFormat.RichText)
+        layout.addWidget(self._suhrn)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self._ok = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        self._ok.setText("Vykonať")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Zavrieť")
+        buttons.accepted.connect(self._potvrd)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self._vsetky_button.clicked.connect(self._rozbalit_vsetky)
+        hotove_button.clicked.connect(self._zmazat_hotove)
+        vymen_button.clicked.connect(self._prehod)
+        navrh_button.clicked.connect(lambda: self._nastav_vybrane(
+            lambda n: (n.interpret, n.album, str(n.rok or ""))))
+        povodny_button.clicked.connect(lambda: self._nastav_vybrane(
+            lambda n: ("", n.surovy, "")))
+        downloads_button.clicked.connect(self._otvor_downloads)
+
+        self._napln()
+        self._tabulka.itemChanged.connect(lambda _item: self._obnov())
+
+    # ── naplnenie a prepocet ──────────────────────────────────────────────────
+    @staticmethod
+    def _velkost(bajty: int) -> str:
+        if bajty >= 1024 ** 3:
+            return f"{bajty / 1024 ** 3:.1f} GB".replace(".", ",")
+        return f"{max(1, round(bajty / 1024 ** 2))} MB"
+
+    def _pevna(self, text: str, zarovnaj_vpravo: bool = False) -> QTableWidgetItem:
+        item = QTableWidgetItem(text)
+        item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+        if zarovnaj_vpravo:
+            item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        return item
+
+    def _napln(self) -> None:
+        from music_player import downloads_import
+
+        self._plnim = True
+        self._tabulka.setRowCount(len(self._navrhy))
+        for row, navrh in enumerate(self._navrhy):
+            hotovy = (downloads_import.existujuci(self._target, navrh.nazov, navrh.surovy)
+                      if navrh.citatelny else None)
+            for stlpec, zaskrtnut in ((self.ROZBALIT, navrh.citatelny and hotovy is None),
+                                      (self.ZMAZAT, False)):
+                item = QTableWidgetItem()
+                flags = Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
+                if navrh.citatelny or stlpec == self.ZMAZAT:
+                    flags |= Qt.ItemFlag.ItemIsEnabled
+                item.setFlags(flags)
+                item.setCheckState(Qt.CheckState.Checked if zaskrtnut else Qt.CheckState.Unchecked)
+                self._tabulka.setItem(row, stlpec, item)
+            for stlpec, text in ((self.SKUPINA, navrh.interpret), (self.ALBUM, navrh.album),
+                                 (self.ROK, str(navrh.rok or ""))):
+                item = QTableWidgetItem(text)
+                if not navrh.citatelny:
+                    item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                item.setToolTip(f"V archíve: {navrh.surovy}")
+                self._tabulka.setItem(row, stlpec, item)
+            self._tabulka.setItem(row, self.PRIECINOK, self._pevna(""))
+            self._tabulka.setItem(row, self.SKLADIEB, self._pevna(
+                str(navrh.skladieb) if navrh.citatelny else "", True))
+            self._tabulka.setItem(row, self.STAV, self._pevna(""))
+            archiv = self._pevna(navrh.archive.name)
+            archiv.setToolTip(str(navrh.archive))
+            self._tabulka.setItem(row, self.ARCHIV, archiv)
+            self._tabulka.setItem(row, self.VELKOST, self._pevna(self._velkost(navrh.velkost), True))
+        self._plnim = False
+        self._obnov()
+
+    def _text(self, row: int, stlpec: int) -> str:
+        item = self._tabulka.item(row, stlpec)
+        return item.text().strip() if item is not None else ""
+
+    def _hodnoty(self, row: int) -> tuple[str, str, str]:
+        return (self._text(row, self.SKUPINA), self._text(row, self.ALBUM),
+                self._text(row, self.ROK))
+
+    def _zaskrtnute(self, row: int, stlpec: int) -> bool:
+        item = self._tabulka.item(row, stlpec)
+        return (item is not None and bool(item.flags() & Qt.ItemFlag.ItemIsEnabled)
+                and item.checkState() == Qt.CheckState.Checked)
+
+    def _obnov(self) -> None:
+        """Priecinok a stav kazdeho riadku podla toho, co je prave v bunkach."""
+        if self._plnim:
+            return
+        from music_player import downloads_import
+
+        self._plnim = True
+        videne: set[str] = set()
+        rozbali = skladieb = na_zmazanie = bajtov = nerozbalene = 0
+        problem = False
+        for row, navrh in enumerate(self._navrhy):
+            interpret, album, rok = self._hodnoty(row)
+            nazov = downloads_import.nazov_priecinka(interpret, album, rok)
+            hotovy = (downloads_import.existujuci(self._target, nazov, navrh.surovy)
+                      if navrh.citatelny and nazov else None)
+            self._hotove[row] = hotovy
+            rozbalit = self._zaskrtnute(row, self.ROZBALIT)
+            zmazat = self._zaskrtnute(row, self.ZMAZAT)
+            upravene = (interpret, album, rok) != (navrh.interpret, navrh.album,
+                                                   str(navrh.rok or ""))
+
+            if not navrh.citatelny:
+                stav, farba = f"nedá sa prečítať: {navrh.chyba}", self._CERVENA
+            elif not nazov:
+                stav, farba = "chýba názov", self._CERVENA
+                problem = problem or rozbalit
+            elif hotovy is not None:
+                stav = "už rozbalené" + (f" (ako {hotovy.name})" if hotovy.name != nazov else "")
+                farba = self._HNEDA
+            elif rozbalit and nazov.casefold() in videne:
+                stav, farba = "rovnaký priečinok ako iný archív — rozbalí sa len prvý", self._ZLTA
+            elif upravene:
+                stav, farba = "nové — upravené", self._ZELENA
+            elif navrh.zdroj == downloads_import.DOHLADANE:
+                stav, farba = "nové — názov z noviniek / Metal Archives", self._ZELENA
+            elif navrh.zdroj == downloads_import.Z_NAZVU:
+                stav, farba = "nové — názov z archívu", self._ZELENA
+            else:
+                stav, farba = "nové — názvu nerozumiem, skontroluj", self._ZLTA
+
+            if rozbalit and nazov and hotovy is None and nazov.casefold() not in videne:
+                rozbali += 1
+                skladieb += navrh.skladieb
+                videne.add(nazov.casefold())
+            if zmazat:
+                na_zmazanie += 1
+                bajtov += navrh.velkost
+                if navrh.citatelny and hotovy is None and not rozbalit:
+                    nerozbalene += 1
+
+            ukaz = nazov if navrh.citatelny else ""
+            priecinok = self._tabulka.item(row, self.PRIECINOK)
+            priecinok.setText(f"{self._target.name}\\{ukaz}" if ukaz else "")
+            priecinok.setToolTip(str(self._target / ukaz) if ukaz else "")
+            priecinok.setForeground(QColor("#f5ead1" if rozbalit and hotovy is None else "#6b5c4a"))
+            stav_item = self._tabulka.item(row, self.STAV)
+            stav_item.setText(stav)
+            stav_item.setToolTip(stav)
+            stav_item.setForeground(QColor(farba))
+        self._plnim = False
+
+        casti = []
+        if rozbali:
+            casti.append(
+                f"Rozbalí sa <b>{MainWindow._sklonuj(rozbali, 'album', 'albumy', 'albumov')}</b>"
+                f" ({MainWindow._sklonuj(skladieb, 'skladba', 'skladby', 'skladieb')})")
+        if na_zmazanie:
+            text = (f"do Koša pôjde <b>{MainWindow._sklonuj(na_zmazanie, 'archív', 'archívy', 'archívov')}"
+                    f"</b> ({self._velkost(bajtov)})")
+            if nerozbalene:
+                text += (f" — <span style='color: {self._ZLTA};'>z toho nerozbalené: "
+                         f"{nerozbalene}</span>")
+            casti.append(text)
+        if problem:
+            casti.append(f"<span style='color: {self._CERVENA};'>niektorý zaškrtnutý album nemá názov</span>")
+        self._suhrn.setText(" · ".join(casti) if casti else "Nie je zaškrtnuté nič na rozbalenie ani zmazanie.")
+        self._vsetky_button.setText(
+            "☐ Nerozbaliť nič" if self._vsetky_zaskrtnute() else "☑ Rozbaliť všetky")
+        self._vsetky_button.setEnabled(bool(self._nove()) or any(
+            self._zaskrtnute(row, self.ROZBALIT) for row in range(len(self._navrhy))))
+        self._ok.setEnabled(bool(rozbali or na_zmazanie) and not problem)
+
+    # ── tlacidla ──────────────────────────────────────────────────────────────
+    def _prepni_stlpec(self, stlpec: int) -> None:
+        if stlpec not in (self.ROZBALIT, self.ZMAZAT):
+            return
+        polozky = [self._tabulka.item(r, stlpec) for r in range(self._tabulka.rowCount())]
+        polozky = [i for i in polozky if i is not None and i.flags() & Qt.ItemFlag.ItemIsEnabled]
+        zapnut = any(i.checkState() != Qt.CheckState.Checked for i in polozky)
+        self._plnim = True
+        for item in polozky:
+            item.setCheckState(Qt.CheckState.Checked if zapnut else Qt.CheckState.Unchecked)
+        self._plnim = False
+        self._obnov()
+
+    def _nove(self) -> list[int]:
+        """Riadky, ktore sa naozaj rozbalia, ked ich zaskrtnem — citatelne a v cieli nie su."""
+        return [row for row, navrh in enumerate(self._navrhy)
+                if navrh.citatelny and self._hotove.get(row) is None]
+
+    def _vsetky_zaskrtnute(self) -> bool:
+        nove = self._nove()
+        return bool(nove) and all(self._zaskrtnute(row, self.ROZBALIT) for row in nove)
+
+    def _rozbalit_vsetky(self) -> None:
+        """Vsetky nove albumy naraz; ked uz su zaskrtnute vsetky, naopak nic."""
+        odskrtnut = self._vsetky_zaskrtnute()
+        riadky = range(len(self._navrhy)) if odskrtnut else self._nove()
+        self._plnim = True
+        for row in riadky:
+            item = self._tabulka.item(row, self.ROZBALIT)
+            if item.flags() & Qt.ItemFlag.ItemIsEnabled:
+                item.setCheckState(Qt.CheckState.Unchecked if odskrtnut else Qt.CheckState.Checked)
+        self._plnim = False
+        self._obnov()
+
+    def _zmazat_hotove(self) -> None:
+        self._plnim = True
+        for row, hotovy in self._hotove.items():
+            if hotovy is not None:
+                self._tabulka.item(row, self.ZMAZAT).setCheckState(Qt.CheckState.Checked)
+        self._plnim = False
+        self._obnov()
+
+    def _vybrane(self) -> list[int]:
+        return sorted({index.row() for index in self._tabulka.selectedIndexes()
+                       if self._navrhy[index.row()].citatelny})
+
+    def _nastav(self, row: int, interpret: str, album: str, rok: str) -> None:
+        for stlpec, text in ((self.SKUPINA, interpret), (self.ALBUM, album), (self.ROK, rok)):
+            self._tabulka.item(row, stlpec).setText(text)
+
+    def _nastav_vybrane(self, hodnoty) -> None:
+        self._plnim = True
+        for row in self._vybrane():
+            self._nastav(row, *hodnoty(self._navrhy[row]))
+        self._plnim = False
+        self._obnov()
+
+    def _prehod(self) -> None:
+        self._plnim = True
+        for row in self._vybrane():
+            interpret, album, rok = self._hodnoty(row)
+            self._nastav(row, album, interpret, rok)
+        self._plnim = False
+        self._obnov()
+
+    @staticmethod
+    def _otvor_downloads() -> None:
+        from music_player import downloads_import
+
+        downloads_import.open_in_explorer(downloads_import.downloads_dir())
+
+    # ── vysledok ──────────────────────────────────────────────────────────────
+    def _potvrd(self) -> None:
+        nerozbalene = [
+            navrh.archive.name for row, navrh in enumerate(self._navrhy)
+            if self._zaskrtnute(row, self.ZMAZAT) and not self._zaskrtnute(row, self.ROZBALIT)
+            and navrh.citatelny and self._hotove.get(row) is None
+        ]
+        if nerozbalene:
+            zoznam = "\n".join(f"• {meno}" for meno in nerozbalene[:15])
+            if len(nerozbalene) > 15:
+                zoznam += f"\n… a ďalších {len(nerozbalene) - 15}"
+            odpoved = QMessageBox.question(
+                self, "Zmazať nerozbalené archívy?",
+                "Tieto archívy pôjdu do Koša, hoci ich album v cieli nie je:\n\n"
+                f"{zoznam}\n\nPokračovať?",
+            )
+            if odpoved != QMessageBox.StandardButton.Yes:
+                return
+        self.accept()
+
+    def ulohy(self) -> list:
+        """Co sa ma s ktorym archivom stat — pre `downloads_import.vykonaj`."""
+        from music_player import downloads_import
+
+        vysledok = []
+        for row, navrh in enumerate(self._navrhy):
+            rozbalit = self._zaskrtnute(row, self.ROZBALIT)
+            zmazat = self._zaskrtnute(row, self.ZMAZAT)
+            if not (rozbalit or zmazat):
+                continue
+            nazov = navrh.nazov_pre_rozbalenie(*self._hodnoty(row)) if rozbalit else None
+            vysledok.append(downloads_import.Uloha(navrh.archive, rozbalit, zmazat, nazov))
+        return vysledok
+
+
 class _NovinkyDialog(QDialog):
     """Zoznam metalovych noviniek zo skenu — co este treba vypocut.
 
@@ -1119,8 +1509,9 @@ class MainWindow(QMainWindow):
     _translation_ready = Signal(object, str, str)
     _metadata_ready = Signal(dict, str)    # (metadata_dict, track_path)
     _durations_ready = Signal()
-    _downloads_progress = Signal(str)      # priebezny stav rozbalovania
-    _downloads_done = Signal(object)       # ImportResult alebo None pri chybe
+    _downloads_progress = Signal(str)      # priebezny stav nacitania a rozbalovania
+    _downloads_loaded = Signal(object)     # Nacitanie alebo Exception
+    _downloads_done = Signal(object)       # ImportResult alebo Exception
     # (Manifest | None, ci sa ma ozvat aj ked nic nove nie je). Kontrola bezi
     # vo vlakne, dialog musi vzniknut na hlavnom — signal to prehodi spat.
     # (manifest | None, ci to bola rucna kontrola, ci server odpovedal)
@@ -1131,6 +1522,10 @@ class MainWindow(QMainWindow):
     # (novinky.Zoznam | None, ci sa ma otvorit okno). Zoznam sa cita zo
     # sietoveho disku, takze vo vlakne — okno musi ostat ovladatelne.
     _novinky_nacitane = Signal(object, bool)
+    # (cesta skladby, obal v bajtoch alebo None) — ked okno ukaze obal
+    # prave hrajucej skladby. Pocuva integracia.py (pozadie plochy, Windows,
+    # Firefox); okno samo o nej nic nevie.
+    obal_zobrazeny = Signal(str, object)
 
     def __init__(
         self,
@@ -1159,6 +1554,9 @@ class MainWindow(QMainWindow):
         self._update_pokusov = 0
         self._playlist_visible = playlist_visible
         self._full_height = max(full_height, _FULL_HEIGHT_DEFAULT)
+        # Napojenie na Windows (integracia.py); nastavi ho app.py po vzniku okna.
+        self.integracia = None
+        self.obal_posledny: tuple[str, bytes | None] | None = None
 
         self.setWindowTitle("Metal Music Player")
         self.setMinimumWidth(480)
@@ -1240,6 +1638,17 @@ class MainWindow(QMainWindow):
             self.save_state()
             QTimer.singleShot(0, self.hide)
         super().changeEvent(event)
+
+    def nativeEvent(self, event_type, message):
+        # Kliky na ⏮ ⏯ ⏭ v nahlade na paneli uloh. Musia sa chytat tu, nie
+        # filtrom celej appky — ten spravy poslane cez SendMessage nevidi.
+        integracia = self.integracia
+        if integracia is not None:
+            try:
+                integracia.nativna_sprava(message)
+            except Exception:
+                pass
+        return False, 0
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         if self._extract_local_paths(event.mimeData()):
@@ -1401,9 +1810,10 @@ class MainWindow(QMainWindow):
         self.downloads_button = QPushButton("📦 Z Downloads")
         from music_player.downloads_import import target_dir
         self.downloads_button.setToolTip(
-            "Nájde v priečinku Downloads všetky rar/zip/7z archívy s hudbou,\n"
-            f"rozbalí ich do {target_dir()} a priečinok otvorí.\n"
-            "Už existujúce albumy sa preskočia, archívy sa nemažú.\n"
+            "Načíta v priečinku Downloads všetky rar/zip/7z archívy s hudbou\n"
+            "a ukáže, ako sa rozbalia (Skupina - Album - Rok) — názvy sa dajú opraviť.\n"
+            f"Rozbaľuje sa do {target_dir()}, až keď to potvrdíš.\n"
+            "V tom istom okne sa archívy dajú presunúť do Koša.\n"
             "Cieľ sa dá zmeniť cez MP3_TARGET v config.txt."
         )
         self.novinky_button = QPushButton("🆕 Novinky")
@@ -1417,6 +1827,11 @@ class MainWindow(QMainWindow):
             "Čo si koľkokrat počúval — skladby, interpreti, albumy a história.\n"
             "Prehratie sa počíta po 30 s (pri krátkych po 30 % skladby)."
         )
+        self.windows_button = QPushButton("🪟 Windows")
+        self.windows_button.setToolTip(
+            "Napojenie na Windows a Firefox: pozadie plochy podľa albumu,\n"
+            "okienko médií vo Windows a mediálne klávesy, tlačidlá na paneli úloh."
+        )
         self.export_button = QPushButton("Export")
         self.export_button.setToolTip("Exportovať nastavenia")
         self.import_button = QPushButton("Import")
@@ -1424,7 +1839,7 @@ class MainWindow(QMainWindow):
         self.help_button = QPushButton("?")
         self.help_button.setToolTip("Nápoveda")
         self.help_button.setFixedWidth(28)
-        self._toolbar_buttons = [self.add_button, self.add_folder_button, self.remove_button, self.clear_button, self.save_m3u_button, self.load_m3u_button, self.goto_current_button, self.sleep_jump_button, self.sleep2_button, self.zalozky_button, self.downloads_button, self.novinky_button, self.statistika_button, self.export_button, self.import_button, self.help_button]
+        self._toolbar_buttons = [self.add_button, self.add_folder_button, self.remove_button, self.clear_button, self.save_m3u_button, self.load_m3u_button, self.goto_current_button, self.sleep_jump_button, self.sleep2_button, self.zalozky_button, self.downloads_button, self.novinky_button, self.statistika_button, self.windows_button, self.export_button, self.import_button, self.help_button]
         for b in self._toolbar_buttons:
             pl_bar.addWidget(b)
         pl_bar.addStretch(1)
@@ -1674,6 +2089,7 @@ class MainWindow(QMainWindow):
         self.downloads_button.clicked.connect(self._import_from_downloads)
         self.novinky_button.clicked.connect(lambda: self._nacitaj_novinky(hlasne=True))
         self.statistika_button.clicked.connect(self._ukaz_statistiku)
+        self.windows_button.clicked.connect(self._ukaz_windows)
         self.export_button.clicked.connect(self._export_settings)
         self.import_button.clicked.connect(self._import_settings)
         self.help_button.clicked.connect(self._show_help)
@@ -1735,6 +2151,7 @@ class MainWindow(QMainWindow):
         self._translation_ready.connect(self._on_translation_loaded)
         self._metadata_ready.connect(self._on_metadata_loaded)
         self._downloads_progress.connect(self._show_message)
+        self._downloads_loaded.connect(self._on_downloads_loaded)
         self._downloads_done.connect(self._on_downloads_imported)
         self._update_checked.connect(self._on_update_checked)
         self._novinky_nacitane.connect(self._on_novinky_nacitane)
@@ -1774,6 +2191,7 @@ class MainWindow(QMainWindow):
 <ul>
 <li><b>Play / Pause / Stop / Prev / Next</b> — ovládacie tlačidlá</li>
 <li><b>Ctrl+Alt+Y</b> — globálna klávesová skratka na Play/Pause (funguje aj keď appka nie je v popredí)</li>
+<li><b>Mediálne klávesy ⏮ ⏯ ⏭</b> a tlačidlá na slúchadlách — cez ovládanie médií vo Windows (pozri 🪟 Windows nižšie)</li>
 <li><b>Gapless playback</b> — ďalšia skladba sa predpripraví a spustí tesne pred koncom aktuálnej, minimálna medzera</li>
 <li><b>ReplayGain</b> — automatická normalizácia hlasitosti (ak majú skladby ReplayGain tagy)</li>
 <li><b>Seek slider</b> — klikni alebo ťahaj pre presun v skladbe</li>
@@ -1799,7 +2217,7 @@ class MainWindow(QMainWindow):
 <li>Pridané skladby sa pri <b>ukončení prehrávača</b> z playlistu zase vyhodia — ostane presne to, čo tam bolo predtým. Uspanie ani vypnutie PC ukončenie nie je, po zobudení sú stále tam. Zmeníš to prepínačom <b>Nechať skladby v playliste aj po ukončení prehrávača</b> v dialógu zoznamu (v <b>config.txt</b> riadok <b>SPANOK_NECHAT_V_PLAYLISTE</b> / <b>SPANOK2_NECHAT_V_PLAYLISTE</b> = ano / nie).</li>
 <li>Keď je <b>spanok.m3u</b> prázdny, tlačidlo <b>Spánok</b> sa správa po starom: preskočí na tretiu skladbu od konca playlistu.</li>
 <li><b>🔖 Záložky</b> — skladby, od ktorých sa dá jedným klikom začať hrať. Klik na tlačidlo ukáže zoznam záložiek v poradí playlistu; vybraná skladba sa pustí a hrá sa od nej ďalej, kým to nezastavíš alebo kým playlist nedohrá (vtedy platí <b>Vypnúť PC po skončení</b> / <b>Spať po skončení</b> ako vždy). Na rozdiel od Spánku sa do playlistu <b>nič nepridáva</b> a záložka po prehratí ostáva, kde bola. Záložku dáš pravým klikom na skladbu → <b>🔖 Pridať záložku</b> alebo v menu tlačidla (vezme označenú skladbu); v playliste ju spoznáš podľa 🔖 pred názvom. Záložka ide so skladbou, keď ju v playliste presunieš; keď skladbu z playlistu odstrániš, záložka ostane a v menu sa ukáže ako chýbajúca. Záložky sú pre každý notebook vlastné, ako playlist.</li>
-<li><b>📦 Z Downloads</b> — nájde v priečinku Downloads všetky rar/zip/7z archívy, ktoré obsahujú hudbu, rozbalí ich do <b>{target_dir()}</b> (rok sa mení sám, každý album do vlastného podpriečinka) a ten priečinok otvorí. Priečinok albumu sa pomenuje <b>Interpret - Album - Rok</b> — názvy typu <i>Dark Plague`2026`Masquerade by necroscum</i> sa upracú samy. Keď sa z názvu nedá vyčítať, kde končí kapela a začína album, prehrávač sa opýta zoznamu noviniek a potom <b>Metal Archives</b> — odtiaľ berie aj správny zápis (<i>Behemoth - I, Scvlptor</i>, <i>Boötes Void</i>). Keď sa zhoda nenájde, názov sa nechá tak, ako prišiel; netipuje sa. Vypína sa <b>NAZVY_MA=nie</b> v <b>config.txt</b>. Na záver vypíše prehľad — ktoré albumy pribudli a s koľkými skladbami, ktoré sa preskočili, lebo tam už boli, a ktoré sa nepodarilo rozbaliť. Archívy v Downloads nechá tak. Cieľ zmeníš cez <b>MP3_TARGET</b> v <b>config.txt</b></li>
+<li><b>📦 Z Downloads</b> — ide na dva kroky. Najprv len <b>načíta</b> všetky rar/zip/7z archívy s hudbou v priečinku Downloads (nič sa ešte nerozbaľuje) a ukáže ich v tabuľke: <b>Skupina</b>, <b>Album</b>, <b>Rok</b> a <b>Priečinok</b> — presne tak sa bude volať priečinok v <b>{target_dir()}</b> (rok sa mení sám, každý album do vlastného podpriečinka). Návrh názvu: názvy typu <i>Dark Plague`2026`Masquerade by necroscum</i> sa upracú samy; keď sa z názvu nedá vyčítať, kde končí kapela a začína album, prehrávač sa opýta zoznamu noviniek a potom <b>Metal Archives</b> — odtiaľ berie aj správny zápis (<i>Behemoth - I, Scvlptor</i>, <i>Boötes Void</i>). Keď je album v archíve ešte v obalovom priečinku (<i>AVLSNEMBR26-By Samaritianin/Avulsed - Nordic Embryogenesis (2026)</i>), obal sa preskočí a názov aj priečinok sa vezmú z vnútorného. Keď sa zhoda nenájde, názov ostane, ako prišiel, a stĺpec Stav napíše <i>názvu nerozumiem, skontroluj</i>. Vypína sa <b>NAZVY_MA=nie</b> v <b>config.txt</b>. Keď návrh nesedí, prepíš skupinu, album alebo rok <b>dvojklikom</b> (alebo F2); tlačidlá pod tabuľkou vedia označeným riadkom <b>prehodiť skupinu a album</b>, <b>vrátiť návrh</b> alebo dať <b>pôvodný názov</b> z archívu. Albumy, ktoré už v cieli sú, majú stav <i>už rozbalené</i> a znova sa nerozbalia. Stĺpec <b>Zmazať</b> presunie archív do <b>Koša</b> (nie natrvalo) — po rozbalení, alebo hneď, keď Rozbaliť nie je zaškrtnuté; tlačidlo <b>🗑 Zmazať už rozbalené</b> zaškrtne všetky, ktorých album už máš. Tlačidlo <b>☑ Rozbaliť všetky</b> zaškrtne naraz všetky nové albumy (druhým klikom ich zase odškrtne). Archív, ktorý sa nepodarilo rozbaliť, sa nezmaže. Klik na hlavičku Rozbaliť / Zmazať prepne celý stĺpec. Po potvrdení <b>Vykonať</b> vypíše prehľad — ktoré albumy pribudli a s koľkými skladbami, ktoré sa preskočili, čo sa nepodarilo rozbaliť a čo išlo do Koša — a keď niečo pribudlo, otvorí cieľový priečinok. Cieľ zmeníš cez <b>MP3_TARGET</b> v <b>config.txt</b></li>
 <li><b>🆕 Novinky</b> — nové metalové albumy zo skenu <b>metal-novinky</b>. Číslo v tlačidle je počet tých, ktoré si ešte neodškrtol. Okno má dve záložky: <b>Tento týždeň</b> (čo vychádza od pondelka do nedele, aj keď to sken našiel o týždeň skôr) a <b>Už vydané</b> (albumy, ktoré na Metal Archives pribudli až po svojom vydaní — inak by ti ušli). V oboch sú albumy zoradené podľa dňa vydania a v rámci dňa podľa abecedy. Pri každom je štýl, dátum vydania a odkazy na <b>YouTube</b>, <b>Bandcamp</b> a <b>Metal Archives</b> (dvojklik na riadok otvorí YouTube). Tlačidlom <b>✓ Skontrolované</b> album zo zoznamu zmizne — ale nezmaže sa: zaškrtávadlo <b>Zobraziť aj skontrolované</b> ho vráti a dá sa vrátiť aj medzi nové. Odškrtnutie sa ukladá na NAS, takže platí na oboch notebookoch. Pod čiarou sú albumy, s ktorými si filter žánrov nevedel rady — tie ešte treba posúdiť ručne. Keď album stiahneš a rozbalíš cez <b>📦 Z Downloads</b>, odškrtne sa sám. Vypína sa cez <b>NOVINKY=nie</b> v <b>config.txt</b></li>
 <li><b>Ctrl+F</b> — vyhľadávanie v playliste, Enter = ďalší výskyt, Escape = zatvoriť</li>
 <li><b>Pravý klik</b> — kontextové menu (metadáta, záložka, pridať do „Spánok“ / „Spánok 2“, odstrániť)</li>
@@ -1812,6 +2230,17 @@ class MainWindow(QMainWindow):
 <li><b>Cover</b> — automaticky stiahne a zobrazí obal albumu</li>
 <li><b>Texty piesní</b> — automaticky vyhľadá a zobrazí texty</li>
 <li><b>Pozadie</b> — rozmazaný obal albumu ako pozadie appky</li>
+</ul>
+
+<h3 style="color: #d4860a;">Windows a Firefox (🪟 Windows)</h3>
+<ul>
+<li><b>Pozadie plochy podľa albumu</b> — keď hrá hudba, na ploche je obal albumu s interpretom, albumom a rokom. Tvoje pozadie sa vráti po zastavení, po pauze dlhšej ako 5 minút a pri ukončení prehrávača — aj keď prehrávač spadne alebo ho zabije vypnutie PC, vráti ho pri ďalšom spustení. Pozadie, ktoré si medzitým zmeníš sám, nechá tak; prezentáciu ani Windows Spotlight nemení.</li>
+<li><b>Farba Štartu a panela úloh</b> — robí ju Windows sám podľa pozadia, keď máš v Nastaveniach → Prispôsobenie → Farby zapnuté <i>Farba zvýraznenia: Automaticky</i> a <i>Zobraziť farbu zvýraznenia na Štarte a paneli úloh</i> (len v tmavom režime). Prehrávač ti tieto nastavenia nemení.</li>
+<li><b>Ovládanie médií vo Windows</b> — okienko s obalom a tlačidlami pri zmene hlasitosti, prehrávač v Rýchlych nastaveniach (Win+A), mediálne klávesy a tlačidlá na Bluetooth slúchadlách. Potrebuje knižnicu <b>winrt</b> — keď chýba, prehrávač si ju doinštaluje sám (priebeh v %TEMP%\\metalplayer-kniznice.log).</li>
+<li><b>Panel úloh</b> — keď je okno otvorené, pod náhľadom jeho ikony sú tlačidlá ⏮ ⏯ ⏭ a ikona sa plní pásom priebehu skladby (pri pauze žltým).</li>
+<li><b>Firefox</b> — rozšírenie od verzie 1.2 farbí lištu, karty a novú kartu podľa albumu a v okienku ukazuje obal. Novú verziu nainštaluješ z okna 🪟 Windows (Firefox sa sám neaktualizuje).</li>
+<li>Každá časť sa dá vypnúť v okne <b>🪟 Windows</b> — zapisuje sa do <b>config.txt</b> (POZADIE_PLOCHY, OVLADANIE_MEDII, PANEL_ULOH). Prehrávanie, stream, telefón, spánok ani záložky sa tým nemenia.</li>
+<li>Stav všetkého vidno aj zvonku: <b>curl http://&lt;ip&gt;:8765/health</b>.</li>
 </ul>
 
 <h3 style="color: #d4860a;">LAN Streaming</h3>
@@ -1911,6 +2340,13 @@ kontrola aktualizácií.</li>
             QMessageBox.information(self, "Štatistika", "Štatistika nie je zapnutá.")
             return
         StatistikaOkno(self.controller, self).exec()
+
+    def _ukaz_windows(self) -> None:
+        if self.integracia is None:
+            QMessageBox.information(self, "Windows", "Napojenie na Windows sa nespustilo.")
+            return
+        from music_player.windows_okno import WindowsOkno
+        WindowsOkno(self.integracia, self).exec()
 
     # ── metalove novinky ───────────────────────────────────────────────────────
     def _nacitaj_novinky(self, *, hlasne: bool) -> None:
@@ -2808,6 +3244,8 @@ kontrola aktualizácií.</li>
             self._show_cover(data)
         else:
             self._show_placeholder_cover()
+        self.obal_posledny = (track_path, data)
+        self.obal_zobrazeny.emit(track_path, data)
 
     def _on_lyrics_loaded(self, text: str, track_path: str) -> None:
         tlacidlo = getattr(self, "reload_lyrics_button", None)
@@ -2878,14 +3316,51 @@ kontrola aktualizácií.</li>
         from music_player import downloads_import
 
         self.downloads_button.setEnabled(False)
-        self._show_message("Hľadám v Downloads archívy s hudbou…")
+        self._show_message("Načítavam archívy v Downloads…")
 
         def _work():
             try:
-                result = downloads_import.import_from_downloads(
+                nacitanie = downloads_import.nacitaj(
                     progress=self._downloads_progress.emit,
                     dohladat=self._dohladaj_nazov,
                 )
+            except Exception as exc:  # noqa: BLE001 - chybu ukážeme používateľovi
+                self._downloads_loaded.emit(exc)
+                return
+            self._downloads_loaded.emit(nacitanie)
+
+        threading.Thread(target=_work, daemon=True).start()
+
+    def _on_downloads_loaded(self, nacitanie) -> None:
+        """Nahlad: co sa rozbali a ako sa to bude volat. Rozbaluje sa az po potvrdeni."""
+        import threading
+        from music_player import downloads_import
+
+        if isinstance(nacitanie, Exception):
+            self.downloads_button.setEnabled(True)
+            self._show_message(f"Načítanie archívov zlyhalo: {nacitanie}")
+            QMessageBox.warning(self, "Import z Downloads", f"Načítanie archívov zlyhalo:\n{nacitanie}")
+            return
+
+        if not nacitanie.navrhy:
+            self.downloads_button.setEnabled(True)
+            vynechane = (f" (archívov bez hudby: {len(nacitanie.bez_hudby)})"
+                         if nacitanie.bez_hudby else "")
+            self._show_message(
+                f"V Downloads nie sú žiadne archívy s hudbou{vynechane} — {downloads_import.downloads_dir()}.")
+            return
+
+        dlg = _DownloadsDialog(self, nacitanie)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            self.downloads_button.setEnabled(True)
+            self._show_message("Z Downloads: nič som nerozbalil ani nezmazal.")
+            return
+        ulohy = dlg.ulohy()
+
+        def _work():
+            try:
+                result = downloads_import.vykonaj(
+                    ulohy, nacitanie.target, progress=self._downloads_progress.emit)
             except Exception as exc:  # noqa: BLE001 - chybu ukážeme používateľovi
                 self._downloads_done.emit(exc)
                 return
@@ -2920,10 +3395,6 @@ kontrola aktualizácií.</li>
             QMessageBox.warning(self, "Import z Downloads", f"Rozbaľovanie zlyhalo:\n{result}")
             return
 
-        if not result.outcomes:
-            self._show_message(f"V Downloads nie sú žiadne archívy s hudbou ({downloads_import.downloads_dir()}).")
-            return
-
         skladieb = sum(o.tracks for o in result.extracted)
         if result.extracted:
             parts = [
@@ -2936,10 +3407,17 @@ kontrola aktualizácií.</li>
             parts.append(f"preskočené {len(result.skipped)}")
         if result.failed:
             parts.append(f"chyby {len(result.failed)}")
+        if result.zmazane:
+            parts.append(f"do Koša {len(result.zmazane)} ({_DownloadsDialog._velkost(result.uvolnene)})")
+        if result.nezmazane:
+            parts.append(f"nezmazané {len(result.nezmazane)}")
         self._show_message(f"{result.target}: " + ", ".join(parts) + ".")
 
         self._show_downloads_report(result, self._oznac_stiahnute_novinky(result))
-        downloads_import.open_in_explorer(result.target)
+        # Len ked naozaj nieco pribudlo — samotne upratanie Downloads nema
+        # dovod otvarat Prieskumnik.
+        if result.extracted:
+            downloads_import.open_in_explorer(result.target)
 
     @staticmethod
     def _sklonuj(pocet: int, jeden: str, dva: str, viac: str) -> str:
@@ -2982,6 +3460,15 @@ kontrola aktualizácií.</li>
             "Premenované", "#a89070", premenovane,
             lambda o: f"{html_escape(o.povodny)} &rarr; <b>{html_escape(o.album)}</b>",
         )
+        if result.zmazane:
+            telo += zoznam(
+                f"Do Koša — uvoľnené {_DownloadsDialog._velkost(result.uvolnene)}", "#a89070",
+                result.zmazane, lambda archiv: html_escape(archiv.name),
+            )
+        telo += zoznam(
+            "Nepodarilo sa zmazať", "#d46a6a", result.nezmazane,
+            lambda dvojica: f"{html_escape(dvojica[0].name)} — {html_escape(dvojica[1])}",
+        )
 
         dlg = QDialog(self)
         dlg.setWindowTitle("Import z Downloads")
@@ -2998,6 +3485,9 @@ kontrola aktualizácií.</li>
                 f"Pribudlo {self._sklonuj(len(result.extracted), 'album', 'albumy', 'albumov')}"
                 f" — {self._sklonuj(skladieb, 'skladba', 'skladby', 'skladieb')}"
             )
+        elif result.zmazane and not result.outcomes:
+            nadpis = (f"Downloads upratané — do Koša "
+                      f"{self._sklonuj(len(result.zmazane), 'archív', 'archívy', 'archívov')}")
         else:
             nadpis = "Nepribudol žiadny nový album"
         text.setHtml(

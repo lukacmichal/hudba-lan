@@ -104,8 +104,19 @@ def dohladaj(surovy: str) -> nazvy.Nazov | None:
 
     # Od najdlhsieho mena kapely: "Blind Guardian" musi vyhrat nad "Blind".
     najviac = min(len(v_nazve) - 1, MAX_KANDIDATOV)
-    for pocet in range(najviac, 0, -1):
-        najdene = nazvy.najdi_v_zozname(surovy, diskografia(" ".join(v_nazve[:pocet])))
+    kandidati = [" ".join(v_nazve[:pocet]) for pocet in range(najviac, 0, -1)]
+    # Ked nazov jasne hovori, kto je kapela (`Nunslaughter - Satanic Chaos
+    # Legions`), skusi sa to ako prve — inak by islo "nunslaughter satanic
+    # chaos", "nunslaughter satanic" a az potom "nunslaughter": tri dopyty
+    # s odstupom 1,5 s namiesto jedneho. Na vysledku to nemeni nic, len poradie
+    # — zhodu aj tak posudzuje `najdi_v_zozname`.
+    rozobrany = nazvy.rozober(surovy)
+    if rozobrany is not None:
+        kapela = " ".join(nazvy.slova(rozobrany.interpret))
+        if kapela:
+            kandidati = [kapela] + [k for k in kandidati if k != kapela]
+    for kapela in kandidati[:MAX_KANDIDATOV]:
+        najdene = nazvy.najdi_v_zozname(surovy, diskografia(kapela))
         if najdene is not None:
             return najdene
     return None

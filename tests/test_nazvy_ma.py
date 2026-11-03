@@ -53,6 +53,19 @@ def test_dlhsie_meno_kapely_ma_prednost(bez_siete):
     assert bez_siete[0].startswith("blind guardian")
 
 
+def test_jasna_kapela_z_nazvu_ide_prva(bez_siete):
+    """`Kapela - Album` netreba skusat od najdlhsieho — jeden dopyt namiesto troch."""
+    najdene = nazvy_ma.dohladaj("Behemoth - I Scvlptor Satanica Again (2026)")
+    assert bez_siete == ["behemoth"]
+    assert najdene is None or najdene.interpret == "Behemoth"
+
+
+def test_jasna_kapela_neprebije_dlhsiu_zhodu(bez_siete):
+    """Offline rozdelenie sa len skusi skor; ked nesedi, ide sa postaru."""
+    najdene = nazvy_ma.dohladaj("Blind-Guardian-Nightfall-in-Middle-Earth-1998")
+    assert najdene.interpret == "Blind Guardian"
+
+
 def test_ked_sa_nenajde_nic_vrati_none(bez_siete):
     """Rozbali sa to potom pod povodnym nazvom — tipovat sa nema."""
     assert nazvy_ma.dohladaj("Blind-Guardian-Somewhere-2026-GRP") is None

@@ -6,8 +6,9 @@
   Da sa stiahnut na 2x1 — vtedy sa nazov aj tlacidla zmensia, ale ostanu
   vsetky. Skryvat pri uzkom widgete niektore tlacidlo by znamenalo, ze sa
   poloha ostatnych meni podla sirky a ruka by uz netrafila to iste miesto.
-  Jedina vynimka je VYSKA: pod 120 dp sa skryje riadok hlasitosti, a to
-  cely naraz a na konci, takze nic nad nim sa nepohne.
+  Jedina vynimka je VYSKA: pod 128 dp sa od Androidu 12 vsetko zmensi a pod
+  90 dp (na starsom Androide pod 120) sa skryje riadok hlasitosti, a to
+  cely naraz a na konci, takze nic nad nim sa nepohne (VelkostOvladaca).
 
   minHeight je 110 dp (19. 9. 2026, predtym 70): targetCellHeight je az od
   Androidu 12, domaci telefon ma 10 a pocet buniek odvodi z minHeight. Podla

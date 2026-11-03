@@ -71,11 +71,6 @@ class MetadataPoller(private val ip: String, private val port: Int) {
                 }
                 val body = conn.inputStream.bufferedReader().readText()
                 conn.disconnect()
-                // Do pocitadla dat. Nazbiera sa a odovzda az ten, kto ma
-                // Context — a to je tu dolezitejsie nez inde: stav sa tiahne
-                // kazdu sekundu a kazdy dopyt zvlast by z poctu prenosov
-                // spravil cislo bez informacie.
-                Prenos.nazbieraj(body.toByteArray().size.toLong())
                 val json = JSONObject(body)
                 NowPlayingState(
                     title = json.optString("title"),

@@ -6,13 +6,17 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.util.SizeF
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
+import androidx.annotation.RequiresApi
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
+import kotlin.math.roundToInt
 import sk.lanmusic.MainActivity
 import sk.lanmusic.R
 import sk.lanmusic.Vzhlad
@@ -241,12 +245,13 @@ class OvladacWidgetProvider : AppWidgetProvider() {
         /** Vid [zmenHlasitost] a [onReceive] — tuknutia na hlasitost idu po jednom. */
         private val RAD_HLASITOSTI = Executors.newSingleThreadExecutor()
 
-        /**
-         * Pod touto vyskou (dp) sa riadok hlasitosti skryje. Tri riadky
-         * potrebuju 128 dp (odsadenie 16 + 32 + 4 + 40 + 4 + 32); pri 120 sa
-         * tlacidlam prehravania oreze len okraj, nie ikonka.
-         */
-        private const val VYSKA_S_HLASITOSTOU_DP = 120
+        /** Tlacidla hornej rady — pri zmenseni sa zmensuju spolu. */
+        private val HORNE_TLACIDLA = intArrayOf(
+            R.id.w_touchpad, R.id.w_spanok, R.id.w_sleep, R.id.w_sleep2, R.id.w_shutdown,
+        )
+        private val TLACIDLA_PREHRAVANIA = intArrayOf(
+            R.id.w_prev, R.id.w_playpause, R.id.w_next, R.id.w_stop,
+        )
 
         /** Kolkokrat sa po prikaze spytat, co hra, a s akou pauzou medzi tym. */
         private const val POKUSOV = 5
@@ -267,21 +272,47 @@ class OvladacWidgetProvider : AppWidgetProvider() {
         }
 
         private fun prekresli(ctx: Context, manager: AppWidgetManager, id: Int) {
-            // Vysku hlasi launcher v dp. Nula = nehlasi (stary launcher).
-            // MIN_HEIGHT ako v appke Pocasie, kde sa na domacom telefone
-            // osvedcila.
-            val vyska = manager.getAppWidgetOptions(id)
-                .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
-            manager.updateAppWidget(id, vytvor(ctx, vyska))
+            val obsah = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                podlaVelkosti(ctx, sirkaDp(manager, id))
+            } else {
+                // Vysku hlasi launcher v dp. Nula = nehlasi (stary launcher).
+                // MIN_HEIGHT je vyska na ploche otocenej na sirku — na S26 kvoli
+                // nej zrejme chybala hlasitost aj pri dvoch bunkach (VelkostOvladaca).
+                val vyska = manager.getAppWidgetOptions(id)
+                    .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
+                vytvor(ctx, vyska)
+            }
+            manager.updateAppWidget(id, obsah)
         }
+
+        /**
+         * Vsetky podoby widgetu naraz; launcher si vyberie najvacsiu, ktora sa
+         * zmesti do skutocnej vysky. Sirka je 0, aby o vybere rozhodovala len
+         * vyska — tlacidla sa pri uzkom widgete neskryvaju (ovladac_widget_info.xml).
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        internal fun podlaVelkosti(ctx: Context, sirkaDp: Int): RemoteViews =
+            RemoteViews(
+                VelkostOvladaca.VYSKY.associate { vyska ->
+                    SizeF(0f, vyska.toFloat()) to vytvor(ctx, vyska, sirkaDp)
+                },
+            )
+
+        /**
+         * Sirka widgetu (dp) — na ploche na vysku je to MIN_WIDTH
+         * (docs/shared-standard.md 2.10/3); 0 = launcher ju nehlasi, vtedy sa nezvacsuje.
+         */
+        private fun sirkaDp(manager: AppWidgetManager, id: Int): Int =
+            manager.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
 
         /**
          * Obsah widgetu. Oddelene od [prekresli], aby sa dal nafuknut aj bez
          * launchera — inak sa da widget vyskusat len na ploche telefonu.
          *
          * @param vyskaDp vyska widgetu podla launchera, 0 = neznama
+         * @param sirkaDp sirka widgetu, 0 = neznama (nad plnu velkost sa nezvacsuje)
          */
-        internal fun vytvor(ctx: Context, vyskaDp: Int): RemoteViews {
+        internal fun vytvor(ctx: Context, vyskaDp: Int, sirkaDp: Int = 0): RemoteViews {
             val v = RemoteViews(ctx.packageName, R.layout.widget_ovladac)
             val server = OvladacPrefs.server(ctx)
 
@@ -309,17 +340,21 @@ class OvladacWidgetProvider : AppWidgetProvider() {
                 v.setTextViewText(R.id.w_interpret, OvladacPrefs.interpret(ctx))
             }
 
-            val faktor = Vzhlad.faktorWidgetu(ctx)
+            // Zmensovat vie az Android 12 (setViewLayoutHeight), starsi dostane
+            // plnu velkost a pod 120 dp bez hlasitosti, ako doteraz.
+            val zmensuje = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            val mierka = if (zmensuje) VelkostOvladaca.mierka(vyskaDp, sirkaDp) else 1f
+
+            val faktor = Vzhlad.faktorWidgetu(ctx) * mierka
             v.setTextViewTextSize(R.id.w_titul, TypedValue.COMPLEX_UNIT_SP, SP_TITUL * faktor)
             v.setTextViewTextSize(
                 R.id.w_interpret, TypedValue.COMPLEX_UNIT_SP, SP_INTERPRET * faktor,
             )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) rozmery(ctx, v, mierka)
 
-            // Na widgete nizsom nez dve bunky sa riadok hlasitosti skryje;
-            // vyska 0 (launcher ju nehlasi) = ukazat, predvolene su dve bunky.
             v.setViewVisibility(
                 R.id.w_hlasitost_riadok,
-                if (vyskaDp in 1 until VYSKA_S_HLASITOSTOU_DP) View.GONE else View.VISIBLE,
+                if (VelkostOvladaca.sHlasitostou(vyskaDp, zmensuje)) View.VISIBLE else View.GONE,
             )
             pas(ctx, v)
 
@@ -379,6 +414,41 @@ class OvladacWidgetProvider : AppWidgetProvider() {
             )
 
             return v
+        }
+
+        /**
+         * Rozmery vsetkych troch riadkov, rovnomerne zmensene alebo zvacsene na [mierka] —
+         * zaklad su cisla z widget_ovladac.xml. Rad prehravania ma vahu
+         * a vezme si, co ostane. Vodorovne medzery sa nemenia: sirky je dost
+         * a tlacidla ostanu tam, kde ich ruka hlada.
+         *
+         * Nastavuju sa VZDY, aj pri plnej velkosti: podoby maju ten isty
+         * layout, takze launcher pri prechode z mensej na vacsiu views znova
+         * nenafukne, len na nich prehra prikazy (vid [pas]). Plna podoba bez
+         * tychto prikazov by zdedila zmensene rozmery.
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        private fun rozmery(ctx: Context, v: RemoteViews, mierka: Float) {
+            val dp = TypedValue.COMPLEX_UNIT_DIP
+            val hustota = ctx.resources.displayMetrics.density
+            fun px(dpHodnota: Int) = (dpHodnota * mierka * hustota).roundToInt()
+
+            v.setViewPadding(R.id.w_koren, px(8), px(8), px(8), px(8))
+            for (id in HORNE_TLACIDLA) {
+                v.setViewLayoutWidth(id, 32 * mierka, dp)
+                v.setViewLayoutHeight(id, 32 * mierka, dp)
+                v.setViewPadding(id, px(6), px(6), px(6), px(6))
+            }
+            v.setViewLayoutMargin(R.id.w_prehravanie, RemoteViews.MARGIN_TOP, 4 * mierka, dp)
+            for (id in TLACIDLA_PREHRAVANIA) {
+                v.setViewLayoutHeight(id, 40 * mierka, dp)
+                v.setViewPadding(id, px(8), px(8), px(8), px(8))
+            }
+            v.setViewLayoutMargin(R.id.w_hlasitost_riadok, RemoteViews.MARGIN_TOP, 4 * mierka, dp)
+            v.setViewLayoutHeight(R.id.w_hlasitost_riadok, 32 * mierka, dp)
+            v.setViewLayoutWidth(R.id.w_stlmit, 32 * mierka, dp)
+            v.setViewLayoutHeight(R.id.w_stlmit, 32 * mierka, dp)
+            v.setViewPadding(R.id.w_stlmit, px(6), px(6), px(6), px(6))
         }
 
         /**

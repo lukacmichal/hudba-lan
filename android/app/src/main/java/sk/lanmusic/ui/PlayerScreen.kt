@@ -620,7 +620,8 @@ private fun VzhladSekcia() {
 @Composable
 private fun PrenosSekcia() {
     val context = LocalContext.current
-    var text by remember { mutableStateOf(Prenos.popis(context)) }
+    var text by remember { mutableStateOf(Prenos.NACITAVAM) }
+    LaunchedEffect(Unit) { Prenos.nacitaj(context) { text = Prenos.popis(it) } }
     Text(Prenos.NADPIS, style = MaterialTheme.typography.titleSmall)
     Spacer(Modifier.height(4.dp))
     Text(text, style = MaterialTheme.typography.bodyMedium)
@@ -632,8 +633,8 @@ private fun PrenosSekcia() {
     )
     Spacer(Modifier.height(8.dp))
     OutlinedButton(onClick = {
-        Prenos.vynuluj(context)
-        text = Prenos.popis(context)
+        text = Prenos.NACITAVAM
+        Prenos.vynuluj(context) { text = Prenos.popis(it) }
     }) { Text(Prenos.VYNULOVAT) }
 }
 

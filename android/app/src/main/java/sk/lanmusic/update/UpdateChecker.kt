@@ -90,8 +90,6 @@ class UpdateChecker(
             }
         }
 
-        // Najvacsi jednorazovy prenos, aky appka spravi.
-        Prenos.nazbieraj(target.length())
         _state.value = UpdateState.ReadyToInstall(manifest, target)
     }
 

@@ -90,8 +90,14 @@ android {
         // PC cez `POST /api/mouse` (PC appka od 1.20).
         // 2.12 (31) — ikonka mysi aj vo widgete (vlavo od uspavacich), otvori
         // appku rovno na touchpade.
-        versionCode = 31
-        versionName = "2.12"
+        // 2.13 (32) — widget na nizsej bunke (S26) uz neskryje hlasitost:
+        // od Androidu 12 posiela launcheru podoby podla vysky a medzi 90
+        // a 128 dp sa vsetko zmensi (VelkostOvladaca).
+        // 2.14 (33) — 26. 10. 2026: na vyssom widgete (S26) sa obsah aj
+        // zvacsi, az na 1,6× — nad 128 dp ostavalo prazdno (VelkostOvladaca).
+        // 2.15 (28. 10. 2026, APPKY-4): pocitadlo dat z Androidu.
+        versionCode = 34
+        versionName = "2.15"
 
         buildConfigField("String", "NAS_HOST", nasField("NAS_HOST"))
         buildConfigField("String", "NAS_SHARE", nasField("NAS_SHARE"))

@@ -4,9 +4,12 @@ METAL MUSIC PLAYER – OVLÁDANIE Z FIREFOXU
 ČO TO JE
 --------
 • Hlavné rozšírenie (ikona s pentagramom) – po kliknutí okienko s celým
-  ovládaním: čo hrá, posun v skladbe, hlasitosť, Spánok, playlist
-  s hľadaním. Beží na pozadí a drží prehrávač nájdený – BEZ NEHO
-  TLAČIDLÁ NEFUNGUJÚ.
+  ovládaním: čo hrá (s obalom albumu), posun v skladbe, hlasitosť,
+  Spánok, playlist s hľadaním. Beží na pozadí a drží prehrávač nájdený –
+  BEZ NEHO TLAČIDLÁ NEFUNGUJÚ.
+• Od verzie 1.2 farbí Firefox podľa albumu, ktorý hrá (lišta, karty,
+  nová karta). Keď hudba nehrá, vráti sa tvoja téma. Vypína sa
+  v okienku → ⚙.
 • 4 tlačidlá do lišty:  ⏮ predošlá  ⏯ hrať/pauza  ⏭ ďalšia  🔇 stlmiť/vrátiť
   – klik urobí akciu hneď, bez okienka
   – keď na tlačidlo nabehneš myšou: interpret, skladba a čas
@@ -58,8 +61,11 @@ KEĎ TO NEJDE
 
 NOVÁ VERZIA
 -----------
-• Inštaluje sa rovnako (Ctrl+O → Pridať), starú prepíše. Sama sa
-  neaktualizuje.
+• Najjednoduchšie z prehrávača (od 1.25): tlačidlo 🪟 Windows →
+  „Aktualizovať vo Firefoxe" (alebo „Nainštalovať do Firefoxu").
+  Otvorí Firefox len s tým, čo chýba alebo je staršie – potvrď „Pridať".
+• Alebo ručne rovnako ako inštalácia (Ctrl+O → Pridať), starú prepíše.
+  Sama sa neaktualizuje.
 • Vydáva sa na notebooku s C:\NAS:
       C:\NAS\hudba-lan\firefox\zabal.ps1 -Podpisat
   Kľúče k Mozille sú v C:\NAS\amo-credentials.local. Podpis trvá asi

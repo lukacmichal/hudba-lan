@@ -36,12 +36,18 @@ class NowPlayingServer:
         stream_manager: "FfmpegStreamManager | None" = None,
         preferred_port: int = 8765,
         mouse: "DialkovaMys | None" = None,
+        cover_provider: "Callable[[], tuple[bytes, str] | None] | None" = None,
+        health_provider: "Callable[[], dict] | None" = None,
     ) -> None:
         self._payload_provider = payload_provider
         self._command_handler = command_handler
         self._playlist_provider = playlist_provider
         self._stream_manager = stream_manager
         self._mouse = mouse
+        # Obal prave hrajuceho albumu (GET /api/cover) a stav napojenia na
+        # Windows do /health — oboje dodava integracia.py.
+        self._cover_provider = cover_provider
+        self._health_provider = health_provider
         self._preferred_port = preferred_port
         self._server: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
@@ -68,6 +74,8 @@ class NowPlayingServer:
             self._command_handler,
             self._playlist_provider,
             self._mouse,
+            self._cover_provider,
+            self._health_provider,
         )
         try:
             self._server = _LowLatencyHTTPServer((self.host, self._preferred_port), handler)
@@ -92,6 +100,8 @@ class NowPlayingServer:
         command_handler: "Callable[[str, dict], None] | None" = None,
         playlist_provider: "Callable[[], dict] | None" = None,
         mouse: "DialkovaMys | None" = None,
+        cover_provider: "Callable[[], tuple[bytes, str] | None] | None" = None,
+        health_provider: "Callable[[], dict] | None" = None,
     ):
         class Handler(BaseHTTPRequestHandler):
             def setup(self):
@@ -108,14 +118,40 @@ class NowPlayingServer:
                     # si k nemu — a preto sa ani nedalo povedat, ako velmi je
                     # pozadu. Odteraz staci:
                     #     curl http://<ip>:8765/health
-                    self._send_json(
-                        {
-                            "status": "ok",
-                            "version": __version__,
-                            "versionCode": __version_code__,
-                        },
-                        HTTPStatus.OK,
-                    )
+                    payload = {
+                        "status": "ok",
+                        "version": __version__,
+                        "versionCode": __version_code__,
+                    }
+                    # Z toho isteho dovodu stav napojenia na Windows: ci sa na
+                    # druhom notebooku doinstalovala kniznica, ci sa meni
+                    # pozadie, ... — bez sadania si k nemu.
+                    if health_provider is not None:
+                        try:
+                            payload["integracia"] = health_provider()
+                        except Exception as exc:
+                            payload["integracia"] = {"chyba": str(exc)}
+                    self._send_json(payload, HTTPStatus.OK)
+                    return
+                if self.path.split("?", 1)[0] == "/api/cover":
+                    # Obal albumu pre Firefox. Adresa nesie ?v=<verzia obalu>,
+                    # takze sa smie drzat v cache — iny album = ina adresa.
+                    obal = None
+                    if cover_provider is not None:
+                        try:
+                            obal = cover_provider()
+                        except Exception:
+                            obal = None
+                    if not obal:
+                        self._send_json({"error": "no cover"}, HTTPStatus.NOT_FOUND)
+                        return
+                    data, typ = obal
+                    self.send_response(int(HTTPStatus.OK))
+                    self.send_header("Content-Type", typ)
+                    self.send_header("Content-Length", str(len(data)))
+                    self.send_header("Cache-Control", "max-age=86400")
+                    self.end_headers()
+                    self.wfile.write(data)
                     return
                 if self.path == "/api/now-playing":
                     try:

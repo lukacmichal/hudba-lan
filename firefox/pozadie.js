@@ -9,9 +9,14 @@
 //     toho, aby kazde zvlast hladalo prehravac a pytalo sa ho kazde 2 s.
 //
 // API prehravaca (music_player/metadata_server.py):
-//   GET  /api/now-playing   co hra, pozicia, hlasitost, playlistVersion
+//   GET  /api/now-playing   co hra, pozicia, hlasitost, playlistVersion;
+//                           od prehravaca 1.25 aj album, farby obalu a
+//                           albumAktivny (music_player/integracia.py)
 //   GET  /api/playlist      cely playlist (stahuje sa len pri zmene verzie)
+//   GET  /api/cover?v=...   obal albumu (okienko)
 //   POST /api/control       {"action": "playpause" | "next" | "seek" | ...}
+//
+// Od verzie 1.2 farbi aj Firefox podla albumu, ktory hra (tema).
 
 const PORT = 8765;
 const PREDVOLENI_HOSTIA = ["127.0.0.1", "192.168.1.50", "192.168.1.51"];
@@ -111,6 +116,68 @@ async function _obnov() {
     }
   }
   rozposli();
+  aktualizujTemu();
+}
+
+// ── tema podla albumu ────────────────────────────────────────────────────────
+// Farby obalu pocita prehravac (pozadie_plochy.farby_z_obalu) — tie iste
+// ma aj pozadie plochy. "albumAktivny" = hra, alebo pauza kratsia ako 5 min.
+// Tema sa meni len pri zmene farieb, nie kazde 2 s. Ked hudba nehra alebo
+// prehravac nie je, theme.reset() vrati temu, ktoru ma clovek vybratu.
+let temaZapnuta = true;
+let temaKluc = "";
+
+function temaZFarieb(f) {
+  return {
+    colors: {
+      frame: f.pozadie,
+      frame_inactive: f.pozadie,
+      tab_background_text: f.text,
+      tab_selected: f.lista,
+      tab_text: f.text,
+      tab_line: f.akcent,
+      tab_loading: f.akcent,
+      toolbar: f.lista,
+      toolbar_text: f.text,
+      toolbar_field: f.pozadie,
+      toolbar_field_text: f.text,
+      toolbar_field_focus: f.pozadie,
+      toolbar_field_text_focus: f.text,
+      toolbar_field_border_focus: f.akcent,
+      toolbar_bottom_separator: f.pozadie,
+      icons: f.text,
+      icons_attention: f.akcent,
+      popup: f.lista,
+      popup_text: f.text,
+      popup_border: f.pozadie,
+      popup_highlight: f.akcent,
+      popup_highlight_text: f.pozadie,
+      sidebar: f.pozadie,
+      sidebar_text: f.text,
+      sidebar_border: f.lista,
+      // Nova karta (Firefox Home) — pozadie prehliadaca v doslovnom zmysle.
+      ntp_background: f.pozadie,
+      ntp_text: f.text,
+      button_background_hover: "rgba(255, 255, 255, 0.10)",
+      button_background_active: "rgba(255, 255, 255, 0.18)",
+    },
+  };
+}
+
+async function aktualizujTemu() {
+  const f = stav && stav.albumAktivny && stav.farby;
+  const chcem = temaZapnuta && aktivny && f ? JSON.stringify(f) : "";
+  if (chcem === temaKluc) return;
+  temaKluc = chcem;
+  try {
+    if (chcem) {
+      await browser.theme.update(temaZFarieb(f));
+    } else {
+      await browser.theme.reset();
+    }
+  } catch (e) {
+    temaKluc = "";   // skusi sa znova pri dalsom obnoveni
+  }
 }
 
 // Naraz sa moze pytat casovac, okienko aj tlacidlo — do siete ide jedna otazka.
@@ -208,9 +275,14 @@ browser.runtime.onMessageExternal.addListener((sprava, odosielatel) => {
   return undefined;
 });
 
-// Okienko zmenilo zoznam adries.
+// Okienko zmenilo zoznam adries alebo vypinac temy.
 browser.storage.onChanged.addListener((zmeny, oblast) => {
-  if (oblast !== "local" || !zmeny.hostia) return;
+  if (oblast !== "local") return;
+  if (zmeny.temaZapnuta) {
+    temaZapnuta = zmeny.temaZapnuta.newValue !== false;
+    aktualizujTemu();
+  }
+  if (!zmeny.hostia) return;
   const novy = zmeny.hostia.newValue;
   hostia = Array.isArray(novy) && novy.length ? novy : PREDVOLENI_HOSTIA.slice();
   aktivny = null;
@@ -218,7 +290,11 @@ browser.storage.onChanged.addListener((zmeny, oblast) => {
 });
 
 (async () => {
-  const ulozene = await browser.storage.local.get("hostia");
+  const ulozene = await browser.storage.local.get(["hostia", "temaZapnuta"]);
   if (Array.isArray(ulozene.hostia) && ulozene.hostia.length) hostia = ulozene.hostia;
+  temaZapnuta = ulozene.temaZapnuta !== false;
+  // Tema z minuleho behu Firefoxu, ktora uz nemusi platit (hudba medzicasom
+  // dohrala) — kym sa prehravac neozve, nech je tema cloveka.
+  browser.theme.reset().catch(() => {});
   slucka();
 })();

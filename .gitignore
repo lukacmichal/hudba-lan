@@ -27,3 +27,4 @@ replay_pid*.log
 *.log
 .vscode/
 build/
+nas-credentials.local

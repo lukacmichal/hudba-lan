@@ -57,9 +57,16 @@ header { display: flex; align-items: center; gap: 8px; }
 .hostia button { font-size: 11px; padding: 1px 8px; border-radius: 10px; }
 .hostia button.vybrany { border-color: var(--akcent); color: var(--akcent-2); }
 
-.titul { margin-top: 10px; font-size: 15px; font-weight: 600;
+.skladba { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+.obal { width: 64px; height: 64px; flex: none; object-fit: cover; border-radius: 6px;
+        border: 1px solid var(--okraj); background: var(--plocha); }
+.texty { flex: 1; min-width: 0; }
+.titul { font-size: 15px; font-weight: 600;
          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .interpret { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.album { color: var(--text-2); font-size: 12px; font-style: italic;
+         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.album:empty { display: none; }
 
 .pas { margin-top: 10px; height: 6px; background: var(--okraj); border-radius: 3px;
        cursor: pointer; position: relative; }
@@ -104,3 +111,6 @@ body.nastavenia-otvorene #nedostupny { display: none !important; }
 .nastavenia label { color: var(--text-2); font-size: 12px; }
 .nastavenia .riadok { display: flex; gap: 8px; }
 .sprava { margin: 0; color: var(--akcent-2); font-size: 12px; min-height: 1em; }
+.volba { display: flex; gap: 6px; align-items: flex-start; padding-top: 6px;
+         border-top: 1px solid var(--okraj); color: var(--text) !important; }
+.volba input { margin-top: 3px; accent-color: var(--akcent); }

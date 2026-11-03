@@ -88,12 +88,37 @@ def main() -> None:
 
     command_bridge = RemoteCommandBridge()
     command_bridge.command.connect(controller.handle_remote_command)
+
+    # Napojenie na Windows (pozadie plochy, ovladanie medii, panel uloh)
+    # vznika az s oknom, server ale bezi skor — preto cez "schranku".
+    integracia_ref: list = [None]
+
+    def now_playing_payload() -> dict:
+        payload = controller.snapshot()
+        integracia = integracia_ref[0]
+        if integracia is not None:
+            try:
+                payload.update(integracia.api_polia())
+            except Exception:
+                pass
+        return payload
+
+    def cover_payload():
+        integracia = integracia_ref[0]
+        return integracia.obal_pre_api() if integracia is not None else None
+
+    def health_payload() -> dict:
+        integracia = integracia_ref[0]
+        return integracia.stav_pre_api() if integracia is not None else {"stav": "nespustené"}
+
     api_server = NowPlayingServer(
-        controller.snapshot,
+        now_playing_payload,
         command_handler=command_bridge.command.emit,
         playlist_provider=controller.playlist_payload,
         stream_manager=stream_manager,
         mouse=DialkovaMys(),
+        cover_provider=cover_payload,
+        health_provider=health_payload,
     )
     api_server.start()
     stream_manager.set_http_stream_url(api_server.stream_url)
@@ -124,6 +149,19 @@ def main() -> None:
         pass
     from music_player.config_loader import get_deepl_api_key
     window.lyrics_edit.set_api_key(get_deepl_api_key())
+
+    # Pred app.exec(): obal, ktory okno prave nacitava vo vlakne, pride az
+    # cez slucku udalosti — integracia ho teda nezmeska.
+    try:
+        from music_player.integracia import WindowsIntegracia
+        integracia = WindowsIntegracia(controller, window)
+        window.integracia = integracia
+        integracia.spusti()
+        integracia_ref[0] = integracia
+    except Exception as exc:
+        window.integracia = None
+        integracia = None
+        window._show_message(f"Napojenie na Windows sa nespustilo: {exc}")
 
     window.show()
     controller.start_scheduled_timer()
@@ -171,6 +209,12 @@ def main() -> None:
 
     def _cleanup() -> None:
         window.save_state()
+        if integracia is not None:
+            # Povodne pozadie plochy spat (caka najviac 4 s).
+            try:
+                integracia.zastav()
+            except Exception:
+                pass
         stream_manager.stop()
         api_server.stop()
         beacon.stop()

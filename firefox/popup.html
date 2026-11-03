@@ -9,13 +9,19 @@
   <header>
     <img src="icons/icon-32.png" alt="" width="20" height="20">
     <div id="stav" class="stav">Hľadám prehrávač…</div>
-    <button id="nastavenia-btn" class="ikona" title="Kde hľadať prehrávač">⚙</button>
+    <button id="nastavenia-btn" class="ikona" title="Nastavenia: kde hľadať prehrávač, farby Firefoxu">⚙</button>
   </header>
   <div id="hostia" class="hostia" hidden></div>
 
   <section id="prehravac" hidden>
-    <div id="titul" class="titul"></div>
-    <div id="interpret" class="interpret"></div>
+    <div class="skladba">
+      <img id="obal" class="obal" alt="" hidden>
+      <div class="texty">
+        <div id="titul" class="titul"></div>
+        <div id="interpret" class="interpret"></div>
+        <div id="album" class="album"></div>
+      </div>
+    </div>
     <div id="pas" class="pas" title="Klik = posun v skladbe"><div id="pas-plny" class="pas-plny"></div></div>
     <div class="casy"><span id="cas">0:00</span><span id="dlzka">0:00</span></div>
 
@@ -58,6 +64,9 @@
       <button id="predvolene">Predvolené</button>
     </div>
     <p id="nastavenia-sprava" class="sprava"></p>
+    <label class="volba"><input type="checkbox" id="tema-volba">
+      Farby Firefoxu podľa albumu, ktorý hrá (lišta, karty, nová karta). Keď hudba
+      nehrá, vráti sa tvoja téma.</label>
   </section>
 
   <script src="popup.js"></script>

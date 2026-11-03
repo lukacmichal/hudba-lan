@@ -98,6 +98,12 @@ function prijmiStav(s) {
   $("titul").textContent = s.title || "—";
   $("interpret").textContent = s.artist || "";
   $("titul").title = s.title || "";
+  // Album a obal posiela prehravac od verzie 1.25; starsi ich nema a okienko
+  // vyzera ako predtym.
+  const album = [s.album || "", s.year ? `(${s.year})` : ""].filter(Boolean).join(" ");
+  $("album").textContent = album;
+  $("album").title = album;
+  ukazObal(s.obalVerzia);
   $("playpause").textContent = s.state === "playing" ? "⏸" : "▶";
   $("dlzka").textContent = cas(s.durationMs);
   if (!tahamHlasitost) {
@@ -112,6 +118,25 @@ function prijmiStav(s) {
   } else {
     oznacHrajucu();
   }
+}
+
+function ukazObal(verzia) {
+  const obal = $("obal");
+  if (!verzia || !aktivny) {
+    obal.hidden = true;
+    obal.removeAttribute("src");
+    obal.dataset.src = "";
+    return;
+  }
+  const host = /:\d+$/.test(aktivny) ? aktivny : `${aktivny}:8765`;
+  const src = `http://${host}/api/cover?v=${encodeURIComponent(verzia)}`;
+  if (obal.dataset.src !== src) {
+    obal.dataset.src = src;
+    obal.src = src;
+  }
+  // Obal, ktory sa nenacital, ostane skryty — inak by pri kazdom obnoveni
+  // na okamih blikol prazdny ramik.
+  obal.hidden = obal.dataset.chyba === src;
 }
 
 function aktualnaPozicia() {
@@ -334,7 +359,19 @@ $("nastavenia-btn").addEventListener("click", () => {
   if (!panel.hidden) {
     $("hostia-pole").value = hostia.join("\n");
     $("nastavenia-sprava").textContent = "";
+    browser.storage.local.get("temaZapnuta").then(({ temaZapnuta }) => {
+      $("tema-volba").checked = temaZapnuta !== false;
+    });
   }
+});
+// Pozadie rozsirenia zmenu zachyti cez storage.onChanged a temu hned
+// nastavi alebo vrati.
+$("tema-volba").addEventListener("change", (e) => {
+  browser.storage.local.set({ temaZapnuta: e.target.checked });
+});
+$("obal").addEventListener("error", () => {
+  $("obal").dataset.chyba = $("obal").dataset.src;
+  $("obal").hidden = true;
 });
 $("ulozit").addEventListener("click", ulozHostov);
 $("predvolene").addEventListener("click", () => {

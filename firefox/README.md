@@ -19,6 +19,16 @@ dovoli len tlacidlo (ikonu), nie text.
 - playlist s hladanim (bez diakritiky, `mgla` najde aj `Mgła`), klik pusti
   skladbu, `⏵` skoci na prave hrajucu
 
+Od verzie **1.2** (prehravac od 1.25) navyse:
+
+- **farby Firefoxu podla albumu, ktory hra** — lista, karty, nova karta
+  (tema cez `browser.theme`, nove povolenie `theme`). Farby pocita prehravac
+  z obalu, tie iste ma pozadie plochy. Ked hudba nehra (stop, pauza dlhsia
+  ako 5 min, prehravac nedostupny), `theme.reset()` vrati temu, ktoru ma
+  clovek vybratu. Vypina sa v ⚙ (`temaZapnuta` v storage).
+- **obal, album a rok v okienku** (`GET /api/cover?v=...`). So starsim
+  prehravacom okienko vyzera ako predtym.
+
 Hlavne rozsirenie je zaroven **mozog**: jeho pozadie (`pozadie.js`) drzi
 prehravac najdeny a stav cerstvy (kazde 2 s, pri nedostupnom kazdych 10 s).
 Okienko sa preto otvori hned s hotovymi udajmi a tlacidla sa pytaju jeho,
@@ -65,7 +75,13 @@ Navod pre cloveka (instalacia, presun tlacidiel, co ked nejde) je
 `NAVOD.txt` — `zabal.ps1` ho pri kazdom vydani nahra na NAS vedla .xpi.
 
 Firefox → Ctrl+O → subor → Pridat; po jednom, hlavne prve. Tlacidla sa
-postavia rovno do listy. Na miesto vedla vyhladavania ich das tak, ze
+postavia rovno do listy.
+
+Jednoduchsie od prehravaca 1.25: `🪟 Windows` → **Nainstalovat do Firefoxu**
+/ **Aktualizovat vo Firefoxe**. Prehravac porovna `extensions.json` v profile
+Firefoxu (len cita) s balikmi na NAS-e a otvori Firefox s tymi, ktore chybaju
+alebo su starsie — clovek uz len potvrdi „Pridat". Firefox rozsirenia
+nainstalovane zo suboru sam neaktualizuje. Na miesto vedla vyhladavania ich das tak, ze
 klikes pravym na listu → **Prisposobit panel nastrojov** a pretiahnes ich
 tam; vyhladavacie pole zuzis tahanim za jeho lavy okraj.
 
@@ -84,6 +100,16 @@ tam; vyhladavacie pole zuzis tahanim za jeho lavy okraj.
   s casovym limitom. Ked sa preto prerusi, verzia uz na AMO moze byt
   odoslana a druhy raz ju Mozilla nepodpise; `amo_stiahni.py` ju vtedy
   stiahne (zabal.ps1 ho skusa pred kazdym podpisom sam).
+
+## Overenie 1.2 (1. 11. 2026)
+
+`web-ext lint` bez chyb a varovani. Firefox 159 headless cez WebDriver BiDi
+(v tejto verzii treba premennu `MOZ_REMOTE_ALLOW_SYSTEM_ACCESS=1`, prepinac
+`-remote-allow-system-access` nestaci) proti falosnemu prehravacu:
+hra album -> tema z jeho farieb (aj `ntp_background`), iny album -> ina
+tema, album skoncil / vypnute v ⚙ -> reset, okienko ukaze obal (500 px)
+a „Ov Vampiracy (2025)", so starsim prehravacom bez temy a bez obalu,
+tlacidlo Dalsia posle prikaz.
 
 ## Overenie (4. 10. 2026)
 

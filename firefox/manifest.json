@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "Metal Music Player",
-  "version": "1.1",
-  "description": "Ovládanie Metal Music Playera (hudba-lan) z lišty Firefoxu: čo hrá, play/pauza, posun, hlasitosť, Spánok a playlist. Drží stav aj pre tlačidlá ⏮ ⏯ ⏭ 🔇.",
+  "version": "1.2",
+  "description": "Ovládanie Metal Music Playera (hudba-lan) z lišty Firefoxu: čo hrá, obal, play/pauza, posun, hlasitosť, Spánok a playlist. Farbí Firefox podľa albumu, ktorý hrá. Drží stav aj pre tlačidlá ⏮ ⏯ ⏭ 🔇.",
   "icons": {
     "48": "icons/icon-48.png",
     "96": "icons/icon-96.png"
@@ -22,6 +22,7 @@
   },
   "permissions": [
     "storage",
+    "theme",
     "http://127.0.0.1/*",
     "http://localhost/*",
     "http://192.168.1.50/*",

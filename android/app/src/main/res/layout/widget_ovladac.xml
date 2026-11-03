@@ -25,9 +25,12 @@
   Prva verzia (2.9) mala tlacidla tichsie / hlasnejsie a cislo. Chcel sa
   posuvnik, tak ju 2.10 nahradila.
 
-  Na widgete vysokom jednu bunku sa tri riadky nezmestia. Vtedy sa riadok
-  hlasitosti SKRYJE (OvladacWidgetProvider.prekresli) — inak by ho
+  Na widgete vysokom jednu bunku sa tri riadky v plnej velkosti nezmestia.
+  Od Androidu 12 sa vtedy vsetky rovnomerne zmensia (VelkostOvladaca, od
+  26. 10. 2026 — na S26 je bunka nizsia nez na A52); az pod 90 dp, a na
+  starsom Androide pod 120 dp, sa riadok hlasitosti SKRYJE — inak by ho
   LinearLayout vtlacil na ukor prehravania, ktore ma vahu a ustupilo by prve.
+  Rozmery tu a v OvladacWidgetProvider.rozmery musia sediet.
 
   Touchpad (23. 9. 2026) je tiez ZLAVA, s vacsou medzerou za sebou: skratka
   do appky nie je prikaz pre PC a nema splyvat so styrmi uspavacimi.
@@ -160,6 +163,7 @@
 
     <!-- ── stredny riadok: prehravanie ──────────────────────────────────── -->
     <LinearLayout
+        android:id="@+id/w_prehravanie"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -233,7 +237,7 @@
 
         <FrameLayout
             android:layout_width="0dp"
-            android:layout_height="32dp"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_marginStart="6dp"
             android:layout_marginEnd="6dp">

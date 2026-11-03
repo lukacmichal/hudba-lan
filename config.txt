@@ -150,3 +150,21 @@ NOVINKY=ano
 # ano (predvolené) = pýtať sa Metal Archives
 # nie              = rozhodovať len z názvu archívu, bez siete
 NAZVY_MA=ano
+
+# ── Napojenie na Windows a Firefox (tlačidlo "🪟 Windows") ───────────────────
+# Všetko sa dá prepnúť aj v okne "🪟 Windows" — zapíše sa to sem.
+#
+# Pozadie plochy podľa albumu: keď hrá hudba, na ploche je obal albumu.
+# Tvoje pozadie sa vráti po zastavení, po pauze dlhšej ako 5 minút a pri
+# ukončení prehrávača (aj po páde — pri ďalšom spustení). Prezentáciu ani
+# Windows Spotlight nemení. Farbu Štartu a panela úloh podľa pozadia robí
+# Windows sám (Nastavenia → Prispôsobenie → Farby → Automaticky).
+POZADIE_PLOCHY=ano
+
+# Okienko médií vo Windows (pri hlasitosti, Win+A), mediálne klávesy a
+# tlačidlá na slúchadlách. Knižnicu winrt si prehrávač doinštaluje sám.
+OVLADANIE_MEDII=ano
+
+# Tlačidlá ⏮ ⏯ ⏭ pod náhľadom okna na paneli úloh a priebeh skladby v ikone.
+# Zmena platí od ďalšieho spustenia.
+PANEL_ULOH=ano

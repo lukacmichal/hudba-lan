@@ -49,16 +49,6 @@ class MainActivity : ComponentActivity() {
         super.attachBaseContext(Vzhlad.obal(newBase))
     }
 
-    /**
-     * Poistka pre pocitadlo dat: polling metadat aj kontrola aktualizacie su
-     * bez Androidu a bajty len nazbieraju ([Prenos.nazbieraj]). Tu je prvy
-     * bod, kde je po nich Context.
-     */
-    override fun onResume() {
-        super.onResume()
-        Prenos.odovzdaj(this)
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) precitajZiadost(intent)

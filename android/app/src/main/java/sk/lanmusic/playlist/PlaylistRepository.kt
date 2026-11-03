@@ -25,8 +25,6 @@ object PlaylistRepository {
             try {
                 if (conn.responseCode != 200) return@runCatching null
                 val body = conn.inputStream.bufferedReader().readText()
-                // Playlist je najvacsi JSON, aky appka od prehravaca pyta.
-                Prenos.nazbieraj(body.toByteArray().size.toLong())
                 val items = JSONObject(body).optJSONArray("items")
                     ?: return@runCatching emptyList<PlaylistItem>()
                 (0 until items.length()).map { i ->

@@ -120,9 +120,6 @@ class StreamService : Service() {
 
     override fun onDestroy() {
         isExiting = true
-        prudHandler.removeCallbacks(prudTiknutie)
-        zapocitajPrud()
-        Prenos.odovzdaj(this)
         reconnectHandler.removeCallbacksAndMessages(null)
         serviceScope.cancel()
         mediaPlayer.setEventListener(null)
@@ -137,38 +134,6 @@ class StreamService : Service() {
     /** Point the media-session controls at the PC player's control API. */
     fun configureRemote(ip: String, port: Int) {
         remoteClient = RemoteControlClient(ip, port)
-    }
-
-    // ------------------------- pocitadlo dat --------------------------------
-    //
-    // Prud hudby je NAJVACSI prenos tejto appky — vsetko ostatne (stav
-    // prehravaca, playlist) su kilobajty, hodina hudby su desiatky megabajtov.
-    // Bez neho by pocitadlo v Nastaveniach tvrdilo, ze appka takmer nic
-    // neprenasa, a to je horsie nez ziadne cislo.
-    //
-    // Bajty hovori LibVLC (`stats.readBytes`), takze sa nic neodhaduje.
-    // Cita sa priebezne (kazdych 30 s) a nie az na konci: prehravanie casto
-    // skonci tym, ze system sluzbu zabije, a vtedy by sa cele sedenie
-    // stratilo. Zapisuje sa cez `nazbieraj`, takze hodina hudby je v pocte
-    // JEDEN prenos, nie stodvadsat.
-    private var prudOdpisaneBajty = 0L
-    private val prudTiknutie = object : Runnable {
-        override fun run() {
-            zapocitajPrud()
-            prudHandler.postDelayed(this, 30_000L)
-        }
-    }
-    private val prudHandler by lazy { Handler(mainLooper) }
-
-    private fun zapocitajPrud() {
-        val precitane = runCatching {
-            mediaPlayer.media?.stats?.readBytes?.toLong() ?: 0L
-        }.getOrDefault(0L)
-        val rozdiel = precitane - prudOdpisaneBajty
-        if (rozdiel > 0) {
-            Prenos.nazbieraj(rozdiel)
-            prudOdpisaneBajty = precitane
-        }
     }
 
     fun play(url: String) {
@@ -193,16 +158,10 @@ class StreamService : Service() {
         _playbackState.value = PlaybackState.Connecting
         pushSessionState()
         updateNotificationAndPost()
-        // Doterajsi prud sa zarata este starymi statistikami; nove medium
-        // zacina citat od nuly, takze aj odpocet musi.
-        zapocitajPrud()
-        prudOdpisaneBajty = 0L
         val media = Media(libVlc, Uri.parse(url))
         mediaPlayer.media = media
         media.release()
         mediaPlayer.play()
-        prudHandler.removeCallbacks(prudTiknutie)
-        prudHandler.postDelayed(prudTiknutie, 30_000L)
     }
 
     /**
@@ -305,11 +264,6 @@ class StreamService : Service() {
                 }
                 MediaPlayer.Event.Stopped -> {
                     Log.d(TAG, "LibVLC: Stopped")
-                    // Koniec sedenia: dorataj zvysok a odovzdaj ho do
-                    // pocitadla, kym este vieme, cez aku siet to islo.
-                    prudHandler.removeCallbacks(prudTiknutie)
-                    zapocitajPrud()
-                    Prenos.odovzdaj(this@StreamService)
                     _playbackState.value = PlaybackState.Stopped
                     updateNotificationAndPost()
                 }

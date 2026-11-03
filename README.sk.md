@@ -10,7 +10,7 @@ Aktualne obsahuje:
 - seek slider pre posuv v skladbe
 - rekurzivne nacitanie celeho priecinka s hudbou
 - drag-and-drop suborov aj priecinkov priamo do okna
-- tlacidlo `Z Downloads` — rozbali vsetky rar/zip/7z archivy s hudbou z Downloads do `MP3_TARGET\_<rok>` (default `C:\data\mp3\_2026`), vypise prehlad pridanych albumov a priecinok otvori
+- tlacidlo `Z Downloads` — najprv len nacita rar/zip/7z archivy s hudbou z Downloads a ukaze nahlad: `Skupina - Album - Rok` a priecinok v `MP3_TARGET\_<rok>` (default `C:\data\mp3\_2026`), kam sa kazdy rozbali. Nazvy sa daju v tabulke opravit, archivy presunut do Kosa; rozbaluje sa az po potvrdeni. Na konci prehlad pridanych albumov a otvoreny priecinok
 - rozbaleny album dostane nazov `Interpret - Album - Rok`; nazvy typu
   ``Dark Plague`2026`Masquerade by necroscum`` sa upracu samy. Ked sa z nazvu
   neda vycitat, kde konci kapela a zacina album, appka sa opyta zoznamu noviniek
@@ -73,6 +73,10 @@ Aktualne obsahuje:
 - telefon ako touchpad: ikonka mysi v appke ovlada kurzor, kliky, koliesko
   a klavesnicu tohto PC cez `POST /api/mouse` (trvale spojenie, protokol
   v `music_player/mys.py`); bez hesla, len domaca siet
+- napojenie na Windows (tlacidlo `🪟 Windows`, od 1.25): pozadie plochy podla
+  albumu, okienko medii vo Windows s medialnymi klavesmi, tlacidla ⏮ ⏯ ⏭ na
+  paneli uloh; Firefox sa farbi podla albumu — viac v
+  [Napojenie na Windows a Firefox](#napojenie-na-windows-a-firefox)
 
 Zatial neobsahuje:
 
@@ -256,6 +260,45 @@ Siet sa da vypnut `NAZVY_MA=nie` v `config.txt`; kroky 1 a 2 bezia dalej.
 `downloads_import` do siete nechodi sam — dostava funkciu zvonka, takze sa da
 testovat bez nej.
 
+### Nahlad pred rozbalenim a mazanie archivov
+
+Navrh nazvu obcas netrafi (kapela s pomlckou v mene, album bez oddelovaca),
+preto sa od verzie 1.22 nerozbaluje naslepo. `downloads_import.nacitaj`
+archivy len precita cez `tar -tf` a navrhne nazov; okno `_DownloadsDialog`
+ukaze tabulku Rozbalit / Skupina / Album / Rok / Priecinok / Stav / Zmazat.
+Skupina, album aj rok sa daju prepisat (dvojklik, F2), tlacidla vedia
+prehodit skupinu a album, vratit navrh alebo dat povodny nazov z archivu.
+Album, ktory v cieli uz je, ma stav `uz rozbalene` a znova sa nerozbali.
+
+`downloads_import.vykonaj` potom rozbali, co je zaskrtnute — pod nazvom
+z nahladu — a archivy so zaskrtnutym Zmazat presunie do **Kosa**
+(`SHFileOperationW` s `FOF_ALLOWUNDO`, nie trvale zmazanie). Archiv, ktory sa
+nepodarilo rozbalit, sa nezmaze ani vtedy, ked bol oznaceny.
+
+Jedna jemnost: `tar.exe` vypisuje mena v cp1250, takze znak mimo nej prepise
+na najblizsi (`Mørk` -> `Mork`). Na disk rozbaluje spravne. Neupraveny navrh,
+ktory nebol dohladany na MA ani v novinkach, sa preto po rozbaleni odvodi
+znova z mena na disku — vysledok je ten isty, len s pravou diakritikou.
+Rucne upraveny alebo dohladany nazov plati doslova. Znaky, ktore Windows
+v nazve priecinka nepusti (`:` `/` `?` ...), sa nahradia alebo vypustia
+uz v nahlade.
+
+Archiv s obalom navyse (`AVLSNEMBR26-By Samaritianin/Avulsed - Nordic
+Embryogenesis (2026)/01.mp3`) sa od 1.23 rozbali bez obalu: `cesta_k_albumu`
+vojde do priecinka, ked je v nom jediny podpriecinok s hudbou a vedla neho
+nanajvys smeti od uploadera (.nfo, .url, .txt — tie sa zahodia). Do `CD1`
+nevojde nikdy a s `cover.jpg` alebo druhym priecinkom vedla ostane stat.
+Rovnake pravidlo plati pre navrh nazvu (z vypisu archivu) aj pre rozbalenie
+(zo suborov na disku), takze nahlad sedi s vysledkom.
+
+Rychlost nacitania: vypis archivu cez `tar -tf` trva ~0,05 s, cas zerie
+Metal Archives (odstup 1,5 s medzi dopytmi). Od 1.24 sa preto (a) album, ktory
+v cieli uz je pod offline alebo povodnym nazvom, do siete vobec nepyta a (b)
+`nazvy_ma.dohladaj` skusi ako prve meno kapely z offline rozdelenia
+(`Nunslaughter - ...` -> `nunslaughter`), takze novy album stoji jeden dopyt
+namiesto az styroch. Namerane na 7 archivoch: ~15 s -> 7,8 s, a ked su 3 z nich
+uz rozbalene, 3,3 s.
+
 ### Metalove novinky z NAS-u
 
 Sken `C:\NAS\metal-novinky` (od 6. 9. 2026 bezi kazdu noc) uz nekonci len
@@ -315,6 +358,73 @@ Nedostupny NAS je ticho: pouzije sa posledna stiahnuta kopia
 (`%APPDATA%\LanMusicPlayer\novinky-kopia.json`) a odskrtnutia pockaju
 v `novinky-neodoslane.log` na najblizsie spojenie. Vypina sa `NOVINKY=nie`,
 iny priecinok nastavi `NOVINKY_PRIECINOK` — oboje v `config.txt`.
+
+### Napojenie na Windows a Firefox
+
+Od verzie 1.25 (35). Vsetko je navyse vedla toho, co prehravac robil — na
+prehravanie, stream, telefon, widget, touchpad, spanok ani zalozky nesiaha.
+Kazda cast sa da vypnut v okne `🪟 Windows` (zapise sa do `config.txt`:
+`POZADIE_PLOCHY`, `OVLADANIE_MEDII`, `PANEL_ULOH`) a ked zlyha, prehravac
+ide dalej bez nej. Spaja to `music_player/integracia.py`.
+
+**Pozadie plochy podla albumu** (`pozadie_plochy.py`). Ked hra hudba, plocha
+ukazuje rozmazany obal cez celu obrazovku, v strede ostry obal a pod nim
+interpret, album a rok — skladany presne na rozlisenie kazdeho monitora
+(IDesktopWallpaper cez ctypes). Meni sa pri zmene albumu, nie skladby.
+Povodne pozadie sa vrati po stope (s 15 s odkladom, medzi skladbami
+prehravac na okamih zastavi), po pauze dlhsej ako 5 minut a pri ukonceni
+appky. Pri vypinani PC sa o to pokusi tiez (WM_ENDSESSION, overene to nie
+je); ked to Windows nestihne, vrati ho dalsie spustenie (nizsie).
+
+* Pred prvou zmenou sa povodne zapise do
+  `%APPDATA%\LanMusicPlayer\pozadie\povodne.json` (cesta pre kazdy monitor,
+  sposob vyplnenia, zoznam „Posledne obrazky" v Nastaveniach) a obrazok sa
+  skopiruje vedla. Ked appka spadne s albumom na ploche, dalsie spustenie
+  pozadie z toho zaznamu vrati — overene tvrdym zabitim procesu.
+* Pozadie, ktore si clovek medzicasom zmeni sam, sa neprepisuje spat; jeho
+  volba sa stane novym „povodnym".
+* Prezentacia (slideshow) ani Windows Spotlight sa nemenia — z programu sa
+  neda spolahlivo vratit. Okno `🪟 Windows` vtedy povie preco.
+* Skladba bez obalu = povodne pozadie (nie obal predosleho albumu).
+
+**Farba Startu a panela uloh** podla albumu nerobi prehravac, ale Windows:
+v Nastaveniach -> Prisposobenie -> Farby treba raz zapnut *Farba
+zvyraznenia: Automaticky* a *Zobrazit farbu zvyraznenia na Starte a paneli
+uloh* (ide len v tmavom rezime). Prehravac systemove nastavenia nemeni, len
+v okne `🪟 Windows` ukaze, ci su zapnute, a otvori ich.
+
+**Ovladanie medii vo Windows** (`windows_media.py`, System Media Transport
+Controls). Okienko s obalom a tlacidlami pri zmene hlasitosti, prehravac
+v Rychlych nastaveniach (Win+A), medialne klavesy ⏮ ⏯ ⏭, tlacidla na
+Bluetooth sluchadlach a posuvnik vo Windows 11. Skratka Ctrl+Alt+Y ostava.
+Potrebuje kniznicu `winrt` (pywinrt 3.2.1, ma kolieska pre Python 3.9–3.14).
+**Aktualizacia z NAS-u kniznice neinstaluje** (a `aktualizuj.ps1` sa berie zo
+starej verzie), takze si ju appka doinstaluje sama: pri starte, na pozadi,
+`python -m pip install`, bez okna, priebeh v `%TEMP%\metalplayer-kniznice.log`.
+Po instalacii sa ovladanie zapne bez restartu. Bez internetu sa to skusi pri
+dalsom spusteni.
+
+**Panel uloh** (`panel_uloh.py`, ITaskbarList3). Ked je okno otvorene, pod
+nahladom jeho ikony su tlacidla ⏮ ⏯ ⏭ a ikona sa plni pasom priebehu
+skladby (pri pauze zltym). Kliky chodia oknu ako WM_COMMAND a chytaju sa
+v `MainWindow.nativeEvent` — filter celej appky (`QAbstractNativeEventFilter`)
+spravy poslane cez SendMessage nevidi.
+
+**Firefox.** API posiela navyse `album`, `year`, `obalVerzia`, `farby`
+(pozadie, lista, akcent, text — tie iste ako na ploche) a `albumAktivny`;
+obal je na `GET /api/cover?v=<obalVerzia>`. Rozsirenie 1.2 podla toho meni
+temu Firefoxu (lista, karty, nova karta) a v okienku ukazuje obal a album.
+Starsie rozsirenie aj androidova appka nove polia ignoruju.
+
+**Stav zvonku** — co sa deje na druhom notebooku, bez sadania si k nemu:
+
+```
+curl http://192.168.1.50:8765/health
+{"status": "ok", "version": "1.25", "versionCode": 35, "integracia": {
+  "pozadie": "na ploche: Nightwish – Imaginaerum", "ovladanieMedii": "zapnuté",
+  "kniznica": "knižnica winrt doinštalovaná", "panelUloh": "zapnuté",
+  "farbaStartu": "…"}}
+```
 
 ### Ked appka po zobudeni nebezi alebo ju telefon nenajde
 
